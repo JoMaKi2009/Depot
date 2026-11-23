@@ -1,8 +1,8 @@
 /* Depot-Rechner – Service Worker: hält alle Dateien für den Offline-Betrieb vor.
    Bei einer neuen Version der App hier die Versionsnummer erhöhen. */
-const VERSION = "depot-2026-11-23-1";
+const VERSION = "depot-2026-11-23-2";
 const FILES = ["./", "index.html", "html2pdf.bundle.min.js", "manifest.webmanifest",
-               "icon-180.png", "icon-192.png", "icon-512.png", "icon-maskable-512.png"];
+               "icon-v2-180.png", "icon-v2-192.png", "icon-v2-512.png", "icon-v2-maskable-512.png"];
 
 self.addEventListener("install", e => {
   e.waitUntil(caches.open(VERSION).then(c => c.addAll(FILES)));
