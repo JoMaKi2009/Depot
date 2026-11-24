@@ -152,6 +152,7 @@
   body.pdf-mode .tabhead{display:none}
   @media print{ .tabhead{display:none} }
   #tab-vorsorge.setup > .tabhead{display:none}
+  #tab-av.leer .av-hide{display:none}
   #tab-safe.setup > section:not(#safeSetup), #tab-safe.setup > #safeNote, #tab-safe.setup > .tabhead{display:none !important}
   .stbox{display:block;border:1px solid;border-radius:8px;padding:10px 12px;color:var(--text);font-weight:400}
   .stbox.ok{background:var(--okbg);border-color:var(--okline)}
@@ -408,10 +409,10 @@
       </div>
     </div>
     <p class="note" style="margin:0 0 14px" id="avIntro"></p>
-    <section class="card">
+    <section class="card av-hide">
       <div class="kpis" id="avKpis"></div>
     </section>
-    <section class="card">
+    <section class="card av-hide">
       <h2>Ist-Verteilung Vermögen</h2>
       <div class="bar" id="barMix"></div>
       <div class="scroll"><table id="mixTable"></table></div>
@@ -427,7 +428,7 @@
       <p style="margin:14px 0 0"><label class="check"><input type="checkbox" id="avReb"> <span id="avRebTxt">Rebalancing: Gesamtsparrate aufteilen</span></label></p>
       <p style="margin:8px 0 0" id="mixFineRow"><label class="check"><input type="checkbox" id="mixFine"> Auch innerhalb des Bands Richtung Ziel ausgleichen</label></p>
     </section>
-    <section class="card">
+    <section class="card av-hide">
       <h2>Sparrate – Aufteilung</h2>
       <div class="bar" id="barRateMix"></div>
       <div class="scroll"><table id="rateMixTable"></table></div>
@@ -1358,6 +1359,7 @@ function renderAll(){
     {l:esc(safeShort()),         v:sf.total,   c:"var(--c5)"},
   ];
   const rIst = vorsorge ? CORE.total/vorsorge : 0;
+  const vermOk = vorsorge && inCorr(rIst);
   const nA = `„${esc(coreShort())}“`, nB = `„${esc(safeShort())}“`;   // aktuelle Namen aus Reiter 1 und 2
   $("avIntro").innerHTML = `${nA} und ${nB} zusammen. ` +
     (hasZ ? `Ziel ${p0(zZ)} ${nA} ${bandTxt} (${p0(zLo)} – ${p0(zHi)}).` : `Ziel für ${nA} unten im Sparplan festlegen.`) +
@@ -1369,12 +1371,13 @@ function renderAll(){
 
   // Ist-Verteilung Vermögen
   bar("barMix", mix);
-  $("mixTable").innerHTML = `<thead><tr><th>Teil</th><th>Wert</th><th>Ist %</th><th>Ziel %</th><th>Band</th><th>Abw. pp</th><th>Abw. €</th></tr></thead><tbody>` +
+  $("mixTable").innerHTML = `<thead><tr><th>Teil</th><th>Wert</th><th>Ist %</th><th>Ziel %</th><th>Band</th><th>Abw. pp</th><th>Abw. €</th><th>Status</th></tr></thead><tbody>` +
     mix.map((m,r)=>{ const ist = vorsorge ? m.v/vorsorge : 0, z = r===0 ? zZ : 1-zZ;
       return `<tr><td><span class="dot" style="background:${m.c}"></span>${m.l}</td><td>${eur(m.v)}</td>
         <td>${vorsorge?pct(ist*100,1):"–"}</td><td>${zielFor(r)}</td><td>${korrFor(r)}</td>
-        <td>${vorsorge&&hasZ?pp((ist-z)*100):"–"}</td><td>${vorsorge&&hasZ?signEur(m.v - z*vorsorge):"–"}</td></tr>`; }).join("") +
-    `</tbody><tfoot><tr><td>Gesamt</td><td>${eur(vorsorge)}</td><td>${vorsorge?pct(100,1):"–"}</td><td>${hasZ?pct(100,0):"–"}</td><td></td><td></td><td></td></tr></tfoot>`;
+        <td>${vorsorge&&hasZ?pp((ist-z)*100):"–"}</td><td>${vorsorge&&hasZ?signEur(m.v - z*vorsorge):"–"}</td>
+        ${vorsorge&&hasZ ? `<td class="${vermOk?"ok":"warn"}">${vermOk?"✅ im Band":"⚠️ außerhalb"}</td>` : "<td>–</td>"}</tr>`; }).join("") +
+    `</tbody><tfoot><tr><td>Gesamt</td><td>${eur(vorsorge)}</td><td>${vorsorge?pct(100,1):"–"}</td><td>${hasZ?pct(100,0):"–"}</td><td></td><td></td><td></td><td></td></tr></tfoot>`;
   // Aussage zum Vermögen – erscheint im Fazit unten (wie Reiter 1/2)
   let vermTxt = "";
   if (vorsorge && hasZ){
@@ -1394,7 +1397,6 @@ function renderAll(){
 
   // Sparrate – Aufteilung
   $("avRebBox").style.display = X.avReb && hasZ ? "" : "none";
-  $("mixFineRow").style.display = X.avReb ? "" : "none";
   AV_SUGGEST = null;
   const rateMix = [
     {l:coreLabel(), v:rCur[0], c:"var(--c1)"},
@@ -1403,7 +1405,7 @@ function renderAll(){
   const f = k => k===null ? "mehr als 50 Jahre" : (k===1 ? "1 Monat" : k+" Monaten");
   let note = "", fz = "";
   const AVL = `<strong>${esc(avShort())} gesamt (Ziel ${p0(zZ)}/${p0(1-zZ)} ${bandTxt}):</strong>`;
-  const rateOk = rTot && inCorr(rShare), vermOk = vorsorge && inCorr(rIst);
+  const rateOk = rTot && inCorr(rShare);
 
   if (!hasZ){
     bar("barRateMix", rateMix);
@@ -1452,6 +1454,13 @@ function renderAll(){
     }
     $("avApply").disabled = !AV_SUGGEST || (AV_SUGGEST[0]===rCur[0] && AV_SUGGEST[1]===rCur[1]);
   }
+  // Noch nichts in Reiter 1/2 eingetragen: nur Hinweis statt leerer Tabellen
+  const avLeer = !vorsorge && !rTot;
+  $("tab-av").classList.toggle("leer", avLeer);
+  if (avLeer) fz = `ℹ️ <strong>${esc(avShort())}:</strong> Noch keine Werte und Sparraten. Trag sie zuerst in ` +
+    `<a href="#" class="goto" data-goto="vorsorge">${nA}</a> und <a href="#" class="goto" data-goto="safe">${nB}</a> ein – ` +
+    `hier siehst du dann, wie sich beide zueinander verhalten, und bekommst auf Wunsch einen Vorschlag für die Sparraten.` +
+    (hasZ ? "" : ` Das Ziel für ${nA} kannst du schon jetzt im Sparplan oben festlegen.`);
   $("mixnote").innerHTML = note;
   $("avFazit").innerHTML = fz;
   const U = X.avUndo;

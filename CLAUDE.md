@@ -34,7 +34,7 @@ Sprache der App und der Kommunikation: **Deutsch**.
 0. **Info** (`#tab-daten`) – Infokasten, Sicherung (Export/Import, letzte Sicherung), CSV/PDF, „Alle Daten zurücksetzen“
 1. **Risikoreich** (`#tab-vorsorge`, Speicherschlüssel `depot-rechner-v1`) – Name frei wählbar – *generisch überarbeitet, fertig*
 2. **Risikoarm** (`#tab-safe`) – Konten und ETFs/Fonds – Name frei wählbar – *generisch überarbeitet, fertig*
-3. **Übersicht Altersvorsorge** (`#tab-av`) – Verhältnis Reiter 1 / Reiter 2, optionales Rebalancing der Gesamtrate – Name frei wählbar – *in Arbeit (Schritte A–C fertig)*
+3. **Übersicht Altersvorsorge** (`#tab-av`) – Verhältnis Reiter 1 / Reiter 2, optionales Rebalancing der Gesamtrate – Name frei wählbar – *generisch überarbeitet, fertig*
 4. **Spielgeld ETFs** (`#tab-etfs`) – nur Erfassung, Broker-Spalten, Obergrenze
 5. **Spielgeld Aktien** (`#tab-spiel`) – nur Erfassung, Einstand, Obergrenze
 6. **Übersicht Gesamt** (`#tab-gesamt`)
@@ -104,7 +104,7 @@ Reiter 2–6 speichern unter `depot-rechner-extra-v1` (Objekt `X`).
 - Nach jedem Schritt: kurze Rückmeldung mit Screenshot (Handy-Viewport) und Ankündigung des nächsten Schritts.
 - Nach dem Push daran erinnern, in der App „Aktualisieren“ zu tippen.
 
-## Stand Reiter 3 „Übersicht“ (in Arbeit)
+## Stand Reiter 3 „Übersicht“ (abgeschlossen)
 - **A (fertig):** Alle Texte nutzen die aktuellen Namen aus Reiter 1/2 (`coreShort()`/`safeShort()`) statt
   „risikoreich/risikoarm“; Einleitung nennt die eingestellten Zielwerte statt fest 60/40 – 70/30.
 - **B (fertig):** Reitername `X.avTab` (t1/t2) über ✎ (`avName()`/`avShort()`/`avLink()`). Bestehende Daten
@@ -119,6 +119,10 @@ Reiter 2–6 speichern unter `depot-rechner-extra-v1` (Objekt `X`).
   (wie Reiter 1/2). Feld „Mindestrate risikoarm“ (`X.avMinArm`) entfernt und beim Laden gelöscht; es gelten die
   Mindestraten aus Reiter 1/2. Text unter „Sparrate – Aufteilung“ wie Reiter 1/2 (Standardaufteilung / Zurück im
   Band nach … / Auf Ziel nach …). Begriff einheitlich „Band“ statt „Korridor“.
+  Ist-Verteilung mit Spalte „Status“ (✅ im Band / ⚠️ außerhalb) wie Reiter 1/2; Feinausgleich-Checkbox immer sichtbar.
+- **D (fertig):** Noch keine Werte und Sparraten in Reiter 1/2 → Klasse `#tab-av.leer` blendet Kennzahlen,
+  Ist-Verteilung und Sparrate-Aufteilung (`.av-hide`) aus; Fazit zeigt ℹ️-Hinweis mit Links zu Reiter 1/2.
 
 ## Nächster Schritt
-Reiter 3: **D** ℹ️-Hinweis im leeren Zustand (noch keine Werte/Sparraten in Reiter 1/2) mit Links dorthin.
+Reiter 4 „Spielgeld ETFs“ analysieren (z. B. feste Broker-Spalten comdirect/Scalable, „Spielgeld ETFs (Scalable)“
+in Reiter 6) – Vorschläge machen, dann schrittweise umsetzen. Offen (klein): „-0,00“ / „-0 €“ bei exakt 0 Abweichung.
