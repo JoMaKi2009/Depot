@@ -50,6 +50,9 @@ Reiter 2–6 speichern unter `depot-rechner-extra-v1` (Objekt `X`).
   (eine Gewichtung wurde bewusst verworfen – zu unübersichtlich). Gilt ebenso für mehrere
   besparte Positionen einer Art in Reiter 2.
 - Reiter 3 (Verhältnis Reiter 1 / Reiter 2): ebenfalls Ziel ± Toleranzband, optional Feinausgleich.
+- Baustein ohne besparten ETF (Reiter 1) bzw. ohne besparte Position (Reiter 2) wird **pausiert**: 0 €, keine
+  Mindestrate; die übrigen Bausteine teilen die Sparrate im Verhältnis ihrer Ziele (z. B. 20/30 → 40/60), Band/Feinausgleich
+  unter ihnen. ⚠️-Hinweis im Fazit (`pauseNote()`). Zählt in der Ist-Verteilung weiter mit. Nichts bespart → Hinweis ohne Rechnung.
 
 ## Stand Reiter 1 „Risikoreich“ (abgeschlossen)
 - Beliebig viele Bausteine (max. 8), Farben aus `PALETTE` rotierend.

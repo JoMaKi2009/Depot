@@ -936,16 +936,24 @@ function renderCore(){
 
   if (!sumOk){ spar.innerHTML=""; dauer.textContent="";
     fazit.innerHTML = `⚠️ <strong>${coreLabel()}:</strong> Die Ziele ergeben ${pct(zSum,0)} – bitte so anpassen, dass sie zusammen 100 % ergeben.`; return; }
-  const noSpar = CS.groups.filter(g=>!g.etfs.some(e=>e.spar));
-  if (noSpar.length){ spar.innerHTML=""; dauer.textContent="";
-    fazit.innerHTML = `⚠️ <strong>${coreLabel()}:</strong> In ${noSpar.map(g=>g.name).join(", ")} ist kein ETF als „wird bespart“ markiert.`; return; }
-  const nG = CS.groups.length;
+  const act = CS.groups.map((g,i)=>g.etfs.some(e=>e.spar)?i:-1).filter(i=>i>=0);
+  const paused = CS.groups.filter((g,i)=>!act.includes(i));
+  if (!act.length){ spar.innerHTML=""; dauer.textContent="";
+    fazit.innerHTML = `⚠️ <strong>${coreLabel()}:</strong> In keinem Baustein ist ein ETF als „wird bespart“ markiert.`; return; }
+  const nG = act.length;
   if (S < nG*m){ spar.innerHTML=""; dauer.textContent="";
     fazit.innerHTML=`<span class="err">Sparrate (${eur(S)}) reicht nicht für ${nG} × Mindestrate (${eur(nG*m)}).</span>`; return; }
 
-  const allIn = inBand(vals, band);
+  // Pausierte Bausteine: Rechnung nur über die besparten, Ziele im Verhältnis (z. B. 20/30 → 40/60)
+  const zA = act.map(i=>GROUPS[i].ziel), zAS = zA.reduce((x,y)=>x+y,0);
+  const tgA = zA.map(z=> zAS>0 ? z/zAS : 1/act.length), vA = act.map(i=>vals[i]), minsA = act.map(()=>m);
+  const okA = (v,tol) => { const t=v.reduce((x,y)=>x+y,0); return t>0 && tgA.every((z,k)=>Math.abs(v[k]/t - z) <= tol + 1e-12); };
+  const allIn = paused.length ? okA(vA, band) : inBand(vals, band);
   const useCorr = !allIn || fine;
-  const a = roundTo(useCorr ? corrected(vals, S, m) : standard(S, m), S);
+  let a;
+  if (!paused.length) a = roundTo(useCorr ? corrected(vals, S, m) : standard(S, m), S);
+  else { const aA = roundTo(useCorr && vA.some(v=>v>0) ? gRebal(vA, tgA, S, minsA) : gStd(tgA, S, minsA), S);
+         a = CS.groups.map((g,i)=> act.includes(i) ? aA[act.indexOf(i)] : 0); }
   CORE.alloc = a;
 
   // Betrag eines Bausteins gleichmäßig auf seine besparten ETFs verteilen
@@ -959,6 +967,20 @@ function renderCore(){
 
   const multi = CS.groups.filter(g=>g.etfs.filter(e=>e.spar).length>1).map(g=>g.name);
   const mNote = multi.length ? ` In ${multi.join(", ")} werden mehrere ETFs bespart – der Betrag des Bausteins wird gleichmäßig aufgeteilt.` : "";
+  const L = `<strong>${coreLabel()}:</strong>`;
+  if (paused.length){
+    const rTxt = tgA.map(r=>(Math.round(r*1000)/10).toLocaleString("de-DE")).join("/");
+    const f = k => k===null ? "mehr als 50 Jahre" : (k===1 ? "1 Monat" : k+" Monaten");
+    const step = v => gRebal(v, tgA, S, minsA);
+    dauer.textContent = act.length===1 ? `Die ganze Sparrate geht an „${CS.groups[act[0]].name}“.` + mNote
+      : !useCorr ? `Aufteilung unter den besparten Bausteinen ${rTxt} – sie liegen untereinander im Band.` + mNote
+      : (() => { const mb = allIn ? 0 : gMonths(vA, step, v=>okA(v, band)), mz = gMonths(vA, step, v=>okA(v, 0.005));
+          return `Unter den besparten Bausteinen (${rTxt}): ` + (allIn ? "" : `zurück im Band nach ca. ${f(mb)}. `) +
+            (mz===0 ? `Bereits auf Ziel (±0,5 pp)` : `Auf Ziel (±0,5 pp) nach ca. ${f(mz)}`) + ` – Kurse konstant angenommen, Aufteilung jeden Monat neu berechnen.` + mNote; })();
+    fazit.innerHTML = `⚠️ ${L} ${pauseNote(paused.map(g=>g.name), act.map(i=>CS.groups[i].name), tgA)} ` +
+      (act.length===1 ? "" : allIn ? "Die besparten Bausteine liegen untereinander im Band." : "Sparplan auf die Beträge oben umstellen.");
+    return;
+  }
   if (!useCorr){
     dauer.textContent = `Standardaufteilung ${zs.join("/")} – alle Bausteine liegen im Band.` + mNote;
   } else {
@@ -968,7 +990,6 @@ function renderCore(){
     dauer.textContent = (allIn ? "" : `Zurück im Band nach ca. ${f(mb)}. `) +
       (mz===0 ? `Bereits auf Ziel (±0,5 pp)` : `Auf Ziel (±0,5 pp) nach ca. ${f(mz)}`) + ` – Kurse konstant angenommen, Aufteilung jeden Monat neu berechnen.` + mNote;
   }
-  const L = `<strong>${coreLabel()}:</strong>`;
   fazit.innerHTML = allIn
     ? (fine ? `✅ ${L} alles im Band – mit Feinausgleich die Beträge oben nutzen, sonst ${zs.join("/")} beibehalten.`
             : `✅ ${L} alles im Band – Sparplan so lassen.`)
@@ -1365,6 +1386,14 @@ function gStd(tg, S, mins){
   const R = S - mins.reduce((a,b)=>a+b,0);
   return tg.map((z,i)=>mins[i] + R*z);
 }
+/* Bausteine ohne besparten ETF / ohne besparte Position werden „pausiert“: 0 €, Rest nach Zielverhältnis */
+function pauseNote(paused, active, ratios){
+  const q = n => `„${esc(n)}“`, list = a => a.length<2 ? a.map(q).join("") : a.slice(0,-1).map(q).join(", ")+" und "+q(a[a.length-1]);
+  const one = paused.length === 1;
+  return `${list(paused)} ${one?"wird":"werden"} derzeit nicht bespart (nichts als „wird bespart“ markiert) – die Sparrate geht an ${list(active)}` +
+    (active.length>1 ? ` im Verhältnis ${ratios.map(r=>(Math.round(r*1000)/10).toLocaleString("de-DE")).join("/")}` : "") +
+    `. ${list(paused)} ${one?"fällt":"fallen"} dadurch mit der Zeit unter ${one?"sein":"ihr"} Ziel.`;
+}
 function gMonths(vals, step, ok){
   let cur = vals.slice();
   for (let k=0; k<=600; k++){
@@ -1433,14 +1462,20 @@ function renderSafe(){
     spF = fromAV
       ? `ℹ️ <strong>${esc(safeShort())}:</strong> Sparrate aktuell 0 € – übernommen aus dem Rebalancing in „${esc(avName())}“. Dieser Teil liegt über dem Band und wird vorerst nicht bespart; die Gesamtrate fließt in „${esc(coreShort())}“. ${avLink()}`
       : `<span class="empty">Sparrate gesamt eintragen – oder über das Rebalancing in <a href="#" class="goto" data-goto="av">„${esc(avName())}“</a> berechnen lassen.</span>`;
-  } else if (noSpar.length){
-    spF = `⚠️ ${lbl} In ${noSpar.map(g=>esc(g.name)).join(", ")} ist keine Position als „wird bespart“ markiert.`;
-  } else if (rate < n*m){
-    spF = `<span class="err">Sparrate (${eur(rate)}) reicht nicht für ${n} × Mindestrate (${eur(n*m)}).</span>`;
+  } else if (noSpar.length === n){
+    spF = `⚠️ ${lbl} In keinem Baustein ist eine Position als „wird bespart“ markiert.`;
+  } else if (rate < (n-noSpar.length)*m){
+    spF = `<span class="err">Sparrate (${eur(rate)}) reicht nicht für ${n-noSpar.length} × Mindestrate (${eur((n-noSpar.length)*m)}).</span>`;
   } else {
-    const empty = tot <= 0;                                  // noch keine Werte: Aufteilung nach Ziel
-    const allIn = empty || okG(vals), useCorr = !empty && (!allIn || P.fine);
-    const a = roundTo(useCorr ? gRebal(vals, tg, rate, mins) : gStd(tg, rate, mins), rate);
+    // Pausierte Bausteine (keine besparte Position): 0 €, Rechnung nur über die besparten mit Zielen im Verhältnis
+    const act = G.map((g,gi)=>g.pos.some(q=>q.spar)?gi:-1).filter(i=>i>=0);
+    const zA = act.map(i=>tg[i]), zAS = zA.reduce((x,y)=>x+y,0);
+    const tgA = zA.map(z=> zAS>0 ? z/zAS : 1/act.length), vA = act.map(i=>vals[i]), minsA = act.map(i=>mins[i]);
+    const okA = (v,tol) => { const t=v.reduce((x,y)=>x+y,0); return t>0 && tgA.every((z,k)=>Math.abs(v[k]/t - z) <= tol + 1e-12); };
+    const empty = vA.every(v=>v<=0);                         // noch keine Werte: Aufteilung nach Ziel
+    const allIn = empty || okA(vA, band), useCorr = !empty && (!allIn || P.fine);
+    const aA = roundTo(useCorr ? gRebal(vA, tgA, rate, minsA) : gStd(tgA, rate, minsA), rate);
+    const a = G.map((g,gi)=> act.includes(gi) ? aA[act.indexOf(gi)] : 0);
     // Betrag eines Bausteins gleichmäßig auf seine besparten Positionen verteilen (wie Reiter 1)
     SAFE_ALLOC = G.map((g,gi)=>{ const sp = g.pos.map((q,pi)=>q.spar?pi:-1).filter(pi=>pi>=0);
       const parts = roundTo(sp.map(()=>a[gi]/sp.length), a[gi]), out = g.pos.map(()=>0); sp.forEach((pi,k)=>out[pi]=parts[k]); return out; });
@@ -1452,16 +1487,21 @@ function renderSafe(){
     const multi = G.filter(g=>g.pos.filter(q=>q.spar).length > 1).map(g=>esc(g.name));
     const mNote = multi.length ? ` In ${multi.join(", ")} werden mehrere Positionen bespart – der Betrag des Bausteins wird gleichmäßig aufgeteilt.` : "";
     const f = k => k===null ? "mehr als 50 Jahre" : (k===1 ? "1 Monat" : k+" Monaten");
-    if (empty) spD = `Standardaufteilung ${zs.join("/")} nach Ziel.`;
-    else if (!useCorr) spD = `Standardaufteilung ${zs.join("/")} – alle Bausteine liegen im Band.`;
+    const zTxt = noSpar.length ? tgA.map(r=>(Math.round(r*1000)/10).toLocaleString("de-DE")).join("/") : zs.join("/");
+    const wer = noSpar.length ? "die besparten Bausteine liegen untereinander im Band" : "alle Bausteine liegen im Band";
+    if (act.length===1 && noSpar.length) spD = `Die ganze Sparrate geht an „${esc(G[act[0]].name)}“.`;
+    else if (empty) spD = `${noSpar.length?"Aufteilung unter den besparten Bausteinen":"Standardaufteilung"} ${zTxt} nach Ziel.`;
+    else if (!useCorr) spD = `${noSpar.length?"Aufteilung unter den besparten Bausteinen":"Standardaufteilung"} ${zTxt} – ${wer}.`;
     else {
-      const step = v => gRebal(v, tg, rate, mins);
-      const mb = allIn ? 0 : gMonths(vals, step, okG);
-      const mz = gMonths(vals, step, v=>{ const T=v.reduce((x,y)=>x+y,0); return T>0 && tg.every((z,i)=>Math.abs(v[i]/T - z) <= 0.005); });
+      const step = v => gRebal(v, tgA, rate, minsA);
+      const mb = allIn ? 0 : gMonths(vA, step, v=>okA(v, band));
+      const mz = gMonths(vA, step, v=>okA(v, 0.005));
       spD = (allIn ? "" : `Zurück im Band nach ca. ${f(mb)}. `) + (mz===0 ? `Bereits auf Ziel (±0,5 pp)` : `Auf Ziel (±0,5 pp) nach ca. ${f(mz)}`) + ` – Zinsen/Kurse nicht berücksichtigt, Aufteilung jeden Monat neu berechnen.`;
     }
     spD += mNote;
-    spF = empty ? `ℹ️ ${lbl} Noch keine Werte erfasst – die Sparrate wird nach Ziel aufgeteilt.`
+    if (noSpar.length) spF = `⚠️ ${lbl} ${pauseNote(noSpar.map(g=>g.name), act.map(i=>G[i].name), tgA)} ` +
+      (act.length===1 ? "" : empty ? "Noch keine Werte erfasst – Aufteilung nach Ziel." : allIn ? "Die besparten Bausteine liegen untereinander im Band." : "Sparplan auf die Beträge oben umstellen.");
+    else spF = empty ? `ℹ️ ${lbl} Noch keine Werte erfasst – die Sparrate wird nach Ziel aufgeteilt.`
         : allIn ? (P.fine ? `✅ ${lbl} alles im Band – mit Feinausgleich die Beträge oben nutzen.` : `✅ ${lbl} alles im Band – Sparplan so lassen.`)
                 : `⚠️ ${lbl} mindestens ein Baustein liegt außerhalb des Bands – Sparplan auf die Beträge oben umstellen.`;
   }
