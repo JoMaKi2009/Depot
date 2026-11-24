@@ -306,6 +306,16 @@
       </div>
     </div>
     <p class="note" style="margin:0 0 14px" id="coreNote"></p>
+    <section class="card zv-card" id="coreZiel">
+      <div class="zv-head"><h2>Zielverteilung</h2>
+        <button class="ico" id="coreZielEdit" title="Ziel bearbeiten" aria-label="Ziel bearbeiten">✎</button></div>
+      <div class="zv-view"><div class="bar" id="barCoreZiel"></div><p class="note" id="coreZielTxt"></p></div>
+      <div class="zv-edit">
+        <div class="zv-list" id="coreZielList"></div>
+        <div class="zv-foot"><p class="note" id="coreZielSum"></p>
+          <button class="ico okb" id="coreZielOk" title="Bestätigen (Enter)" aria-label="Bestätigen">✓</button></div>
+      </div>
+    </section>
     <section class="card st-warn" id="zielWarn" style="display:none">
       <p class="fazit" style="margin:0"><span id="zielWarnText"></span></p>
       <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px">
@@ -701,15 +711,13 @@ function coreEtf(gi, ei, e, n, L){
 }
 function buildCore(){
   $("groups").innerHTML = CS.groups.map((g,gi)=>{
-    const L = g.locked, chg = zielChg(g);
+    const L = g.locked;
     const top = L
       ? `<div class="ehead"><div class="efields">
            <h3 style="margin:2px 0 4px"><span class="dot" style="background:${CORECOL[gi]};margin:0 8px 0 0"></span>${esc(g.name)}</h3>
-           <div class="inl"><span>Ziel</span><span class="rov${chg?" chgtxt":""}">${+g.ziel||0} %${chg?" ⚠️":""}</span></div>
-         </div><div class="eact"><button class="ico" data-cedit="${gi}" title="Baustein bearbeiten (Name, Ziel, Anbieter, WKN)" aria-label="Bearbeiten">✎</button></div></div>`
+         </div><div class="eact"><button class="ico" data-cedit="${gi}" title="Baustein bearbeiten (Name, Anbieter, WKN)" aria-label="Bearbeiten">✎</button></div></div>`
       : `<div class="ehead"><div class="efields">
            <label class="inl"><span><span class="dot" style="background:${CORECOL[gi]};margin-right:4px"></span>Name</span><input type="text" class="name" data-c="gname" data-g="${gi}" value="${esc(g.name)}" placeholder="Baustein"></label>
-           <label class="inl">Ziel (%)<input type="number" inputmode="decimal" min="0" max="100" step="1" data-c="ziel" data-g="${gi}" value="${g.ziel}" class="${chg?"chg":""}"></label>
          </div><div class="eact"><button class="ico okb" data-clock="${gi}" title="Bestätigen (Enter)" aria-label="Bestätigen">✓</button>${CS.groups.length>1?`<button class="del" data-gdel="${gi}" title="Baustein entfernen" aria-label="Baustein entfernen">×</button>`:""}</div></div>`;
     return `<div class="group">${top}
       ${g.etfs.map((e,ei)=>coreEtf(gi,ei,e,g.etfs.length,L)).join("")}
@@ -718,6 +726,34 @@ function buildCore(){
   }).join("");
 }
 buildCore();
+/* Karte „Zielverteilung“ Reiter 1: Ziel % je Baustein nur hier eingeben (Warnkarte zum festgelegten Ziel bleibt) */
+const cZielSum = () => CS.groups.reduce((a,g)=>a+(+g.ziel||0),0);
+function buildCoreZiel(){
+  $("coreZielList").innerHTML = CS.groups.map((g,gi)=>`<label for="czt-${gi}"><span class="dot" style="background:${CORECOL[gi]}"></span>${esc(g.name||`Baustein ${gi+1}`)}</label>
+    <input type="number" inputmode="decimal" min="0" max="100" step="1" id="czt-${gi}" data-czt="${gi}" value="${+g.ziel||0}" class="${zielChg(g)?"chg":""}" aria-label="Ziel % ${esc(g.name||"")}">`).join("");
+}
+function renderCoreZiel(){
+  const sum = cZielSum(), ok = Math.abs(sum-100) < 0.001;
+  bar("barCoreZiel", CS.groups.map((g,gi)=>({l:esc(g.name||`Baustein ${gi+1}`), v:+g.ziel||0, c:CORECOL[gi]})));
+  const zero = CS.groups.filter(g=>!(+g.ziel));
+  $("coreZielTxt").innerHTML = !CS.groups.length ? "" : ok
+    ? `Toleranzband ± ${(CS.band||0).toLocaleString("de-DE")} pp je Baustein.` +
+      (zero.length ? `<br>ℹ️ ${zero.map(g=>`„${esc(g.name||"ohne Namen")}“`).join(", ")} hat noch kein Ziel (0 %) – mit ✎ anpassen.` : "")
+    : `<span class="warn">⚠️ Die Ziele ergeben ${pct(sum,0)} statt 100 % – mit ✎ anpassen.</span>`;
+  $("coreZielSum").innerHTML = ok ? `Summe ${pct(sum,0)} ✅` : `<span class="warn">Summe ${pct(sum,0)} – ${sum<100?`noch ${pct(100-sum,0)} verteilen`:`${pct(sum-100,0)} zu viel`}</span>`;
+}
+function coreZielEdit(on){
+  if (on){ buildCoreZiel(); $("coreZiel").classList.add("editing"); renderCoreZiel(); $("czt-0")?.focus(); return; }
+  if (Math.abs(cZielSum()-100) >= 0.001){ renderCoreZiel(); return; }        // nur mit Summe 100 % schließen
+  $("coreZiel").classList.remove("editing"); buildCore(); touch(); renderAll();
+}
+document.addEventListener("click", ev=>{
+  if (ev.target.closest("#coreZielEdit")) coreZielEdit(true);
+  else if (ev.target.closest("#coreZielOk")) coreZielEdit(false);
+});
+document.addEventListener("input", ev=>{ const t = ev.target; if (t.dataset.czt === undefined) return;
+  const g = CS.groups[+t.dataset.czt]; g.ziel = Math.max(0, +t.value || 0); t.classList.toggle("chg", zielChg(g)); });
+document.addEventListener("keydown", ev=>{ if (ev.key==="Enter" && ev.target.dataset.czt !== undefined){ ev.preventDefault(); coreZielEdit(false); } });
 function gaddState(){ const b=$("gadd"); b.disabled = CS.groups.length>=MAXG; b.textContent = CS.groups.length>=MAXG ? `Maximal ${MAXG} Bausteine` : "+ Baustein hinzufügen"; }
 gaddState();
 $("rate").value = CS.rate || ""; $("tabT1").value = CS.tab.t1 || ""; $("tabT2").value = CS.tab.t2 || ""; $("min").value = CS.min; $("band").value = CS.band; $("fine").checked = CS.fine;
@@ -767,7 +803,7 @@ document.addEventListener("click", ev=>{
     if (!confirm(`Baustein „${g.name||"ohne Namen"}“ mit ${g.etfs.length} ETF(s)${sum?` und ${eur(sum)}`:""} entfernen?`)) return;
     CS.groups.splice(gi,1); buildCore(); gaddState(); touch(); renderAll(); return;
   }
-  if (b.id==="zielReset"){ CS.groups.forEach(g=>g.ziel = refOf(g) ?? 0); }
+  if (b.id==="zielReset"){ CS.groups.forEach(g=>g.ziel = refOf(g) ?? 0); if ($("coreZiel").classList.contains("editing")) buildCoreZiel(); }
   else if (b.id==="zielSet"){
     const zs = CS.groups.map(g=>+g.ziel||0);
     if (Math.abs(zs.reduce((a,c)=>a+c,0)-100) > 0.001) return;
@@ -826,6 +862,7 @@ let CORE = {total:0, dist:0, rate:0};   // Ergebnis für den Gesamt-Reiter (nur 
 function renderCore(){
   renderSetup();
   CS.tab = {t1:$("tabT1").value, t2:$("tabT2").value}; renderTabName();
+  CS.band = num("band"); renderCoreZiel();
   CS.rate = Math.round(num("rate")); CS.min = Math.round(num("min")); CS.band = num("band"); CS.fine = $("fine").checked;
   save(STORE, {v:2, ...CS});
   syncGroups();

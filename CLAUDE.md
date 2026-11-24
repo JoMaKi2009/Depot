@@ -61,6 +61,9 @@ Reiter 2–6 speichern unter `depot-rechner-extra-v1` (Objekt `X`).
   neutrale Startwerte (Sparrate leer, Mindestrate 25 €, Band 5).
 - Reitername (`CS.tab.t1` Oberzeile, `CS.tab.t2` Name) über ✎ in der Kopfzeile des Reiters;
   wirkt auf Reiterleiste, Fazit, Gesamtübersicht, PDF, CSV.
+- **Zielverteilung** (`#coreZiel`, Karte unter der Einleitung, über der Warnkarte) mit ✎/✓ wie Reiter 2
+  (`buildCoreZiel()`/`renderCoreZiel()`): Ziel % je Baustein nur dort, vom festgelegten Ziel abweichende Felder orange,
+  Bestätigen nur bei 100 %. Warnkarte „Als neues Ziel festlegen / zurücksetzen“ bleibt. Baustein-Karten ohne Ziel.
 - `CS.zielRef` wird in `loadCore()` aus dem Speicher übernommen (fehlte früher – Ziel ging beim Neuladen verloren).
 
 ## Stand Reiter 2 „Risikoarm“ (abgeschlossen)
@@ -131,6 +134,5 @@ Reiter 2–6 speichern unter `depot-rechner-extra-v1` (Objekt `X`).
   Ist-Verteilung und Sparrate-Aufteilung (`.av-hide`) aus; Fazit zeigt ℹ️-Hinweis mit Links zu Reiter 1/2.
 
 ## Nächster Schritt
-Karte „Zielverteilung“ oben auch in Reiter 1 (wie Reiter 2: Ziel nur dort eingeben, Baustein-Karten ohne Ziel). In Reiter 1 die Warnkarte „Als neues Ziel festlegen / Auf festgelegtes
-Ziel zurücksetzen“ **behalten** (Wunsch Nutzerin/Nutzer). Danach Reiter 4 „Spielgeld ETFs“ analysieren
-(feste Broker-Spalten comdirect/Scalable, „Spielgeld ETFs (Scalable)“ in Reiter 6). Offen (klein): „-0,00“ / „-0 €“.
+Reiter 4 „Spielgeld ETFs“ analysieren (feste Broker-Spalten comdirect/Scalable, „Spielgeld ETFs (Scalable)“ in
+Reiter 6) – Vorschläge machen, dann schrittweise umsetzen. Offen (klein): „-0,00“ / „-0 €“ bei exakt 0 Abweichung.
