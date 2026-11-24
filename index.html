@@ -113,7 +113,7 @@
     --c5:#7a6fa8; --c6:#5b9aa0; --c7:#8a8a5c; --bartext:#ffffff; --okbg:#e7f5ec; --okline:#b9e0c6; --warnbg:#fdf1e3;
     --warnline:#f2d2a6; --infobg:#e6effa; --infoline:#b8cdea; background:#fff; color:#1d1d1b}
   body.pdf-mode nav, body.pdf-mode .add, body.pdf-mode .btn, body.pdf-mode .del,
-  body.pdf-mode .ico, body.pdf-mode #avUndoBox, body.pdf-mode #tab-daten{display:none !important}
+  body.pdf-mode .ico, body.pdf-mode #avUndoBox, body.pdf-mode #tab-daten, body.pdf-mode .tabreset{display:none !important}
   body.pdf-mode .tab{display:block !important}
   .pdf-title{display:none}
   body.pdf-mode .pdf-title{display:block;font-size:18px;font-weight:700;margin:0 0 12px;padding-top:2px}
@@ -121,7 +121,7 @@
   body.pdf-mode main{max-width:820px;padding:0}
   @media print{
     body{background:#fff;color:#000}
-    nav,.add,.btn,.del,.ico,#avRebBox .note,#avUndoBox{display:none !important}
+    nav,.add,.btn,.del,.ico,#avRebBox .note,#avUndoBox,.tabreset{display:none !important}
     .tab{display:block !important;break-before:page}
     #tab-vorsorge{break-before:auto}
     #tab-daten{display:none !important}
@@ -204,6 +204,9 @@
     .stand{text-align:left}
   }
   @media (display-mode: standalone){ body{-webkit-user-select:none;user-select:none} input,textarea{-webkit-user-select:text;user-select:text} }
+  .tabreset{text-align:center;margin:24px 0 8px}
+  .tabreset button{background:none;border:0;padding:10px;font:inherit;font-size:13px;color:var(--muted);text-decoration:underline;cursor:pointer}
+  #tab-vorsorge.setup > .tabreset{display:none}
   #tab-daten .acts{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
   #tab-daten .acts .btn{margin:0}
   #tab-daten p{margin:0 0 8px;font-size:14px;line-height:1.5}
@@ -327,6 +330,7 @@
       <p class="note" id="dauer"></p>
     </section>
     <section class="card"><p class="fazit" id="fazit"></p></section>
+    <div class="tabreset"><button type="button" id="resetCore">Reiter zurücksetzen …</button></div>
   </section>
 
   <!-- ============ VORSORGE RISIKOARM ============ -->
@@ -598,6 +602,7 @@ const coreLabel = () => `${esc(coreShort())} (${CS.groups.map(g=>+g.ziel||0).joi
 function renderTabName(){
   $("th1").textContent = (CS.tab.t1||"").trim(); $("th2").textContent = coreShort();
   const n = $("navCore"); n.innerHTML = `<span class="t1">${esc((CS.tab.t1||"").trim()) || "&nbsp;"}</span>${esc(coreShort())}`;
+  $("resetCore").textContent = `Reiter „${coreName()}“ zurücksetzen …`;
   $("tab-vorsorge").dataset.title = coreName(); if (!document.body.classList.contains("pdf-mode")) $("pdfCore").textContent = coreName();
 }
 const typLabel  = t => t==="dist" ? "Ausschütter" : t==="acc" ? "Thesaurierer" : "";
@@ -1401,6 +1406,14 @@ function renderDaten(){
 document.querySelector('nav button[data-tab="daten"]').addEventListener("click", renderDaten);
 renderDaten();
 window.caches?.keys?.().then(k=>{ const v = k.filter(n=>n.startsWith("depot-")).sort().pop(); if (v) $("appVer").textContent = v.replace(/^depot-/,""); }).catch(()=>{});
+
+/* ---------- Einzelnen Reiter zurücksetzen ---------- */
+$("resetCore").addEventListener("click", ()=>{
+  if (!confirm(`Reiter „${coreName()}“ zurücksetzen?\n\nAlle Bausteine, ETFs, Werte, Sparrate und der Reitername werden gelöscht – danach startet der Reiter wieder mit der Vorlagenauswahl. Die anderen Reiter bleiben unverändert.\n\nTipp: Vorher im Reiter Info eine Sicherung exportieren.`)) return;
+  try { localStorage.removeItem(STORE); } catch(e){}
+  touch(); save(XSTORE, X);
+  location.reload();
+});
 
 /* ---------- Alle Daten zurücksetzen ---------- */
 const resetOk = () => $("resetIn").value.trim().toUpperCase() === "LÖSCHEN";
