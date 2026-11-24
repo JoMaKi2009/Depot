@@ -392,7 +392,6 @@
     <section class="card">
       <h2>Bausteine &amp; Positionen (€)</h2>
       <div class="groups" id="safes"></div>
-      <button class="add" id="sgadd">+ Baustein hinzufügen</button>
     </section>
     <section class="card">
       <h2>Übersicht Einzelpositionen</h2>
@@ -742,7 +741,7 @@ function buildCoreZiel(){
 }
 function renderCoreZiel(){
   const sum = cZielSum(), ok = Math.abs(sum-100) < 0.001;
-  bar("barCoreZiel", CS.groups.map((g,gi)=>({l:esc(g.name||`Baustein ${gi+1}`), v:+g.ziel||0, c:CORECOL[gi]})));
+  bar("barCoreZiel", CS.groups.map((g,gi)=>({l:g.name||`Baustein ${gi+1}`, v:+g.ziel||0, c:CORECOL[gi]})));
   const zero = CS.groups.filter(g=>!(+g.ziel));
   $("coreZielTxt").innerHTML = !CS.groups.length ? "" : ok
     ? `Toleranzband ± ${(CS.band||0).toLocaleString("de-DE")} pp je Baustein.` +
@@ -1141,27 +1140,32 @@ function buildSafe(){
     const L = g.locked;
     const top = L
       ? `<div class="ehead"><div class="efields">
-           <h3 style="margin:2px 0 4px"><span class="dot" style="background:${SCOL(gi)};margin:0 8px 0 0"></span>${esc(g.name)}</h3>
-         </div><div class="eact"><button class="ico" data-sedit="${gi}" title="Baustein bearbeiten (Name, Positionen)" aria-label="Bearbeiten">✎</button></div></div>`
+           <h3 style="margin:2px 0 4px"><span class="dot" style="background:${SCOL(gi)};margin:0 8px 0 0"></span>${esc(g.name||`Baustein ${gi+1}`)}</h3>
+         </div><div class="eact"><button class="ico" data-sedit="${gi}" title="Positionen bearbeiten" aria-label="Bearbeiten">✎</button></div></div>`
       : `<div class="ehead"><div class="efields">
-           <label class="inl"><span><span class="dot" style="background:${SCOL(gi)};margin-right:4px"></span>Name</span><input type="text" class="name" data-s="gname" data-g="${gi}" value="${esc(g.name)}" placeholder="Baustein"></label>
-         </div><div class="eact"><button class="ico okb" data-slock="${gi}" title="Bestätigen (Enter)" aria-label="Bestätigen">✓</button>${X.sg.length>1?`<button class="del" data-sgdel="${gi}" title="Baustein entfernen" aria-label="Baustein entfernen">×</button>`:""}</div></div>`;
+           <h3 style="margin:2px 0 4px"><span class="dot" style="background:${SCOL(gi)};margin:0 8px 0 0"></span>${esc(g.name||`Baustein ${gi+1}`)}</h3>
+         </div><div class="eact"><button class="ico okb" data-slock="${gi}" title="Bestätigen (Enter)" aria-label="Bestätigen">✓</button></div></div>`;
     return `<div class="group">${top}
       ${g.pos.map((q,pi)=>safePos(gi,pi,q,g.pos.length,L)).join("")}
       ${L ? "" : `<button class="add small" data-sadd="${gi}">+ Position</button>`}
       <div class="sum" id="ssum-${gi}"></div></div>`;
   }).join("");
-  const b = $("sgadd"); b.disabled = X.sg.length>=MAXG; b.textContent = X.sg.length>=MAXG ? `Maximal ${MAXG} Bausteine` : "+ Baustein hinzufügen";
+  const b = $("szAdd"); if (b){ b.disabled = X.sg.length>=MAXG; b.textContent = X.sg.length>=MAXG ? `Maximal ${MAXG} Bausteine` : "+ Baustein hinzufügen"; }
 }
 /* Karte „Zielverteilung“ Reiter 2: Ziel % je Baustein nur hier eingeben */
 const sZielSum = () => X.sg.reduce((a,g)=>a+(+g.ziel||0),0);
 function buildSafeZiel(){                 // Eingabefelder (nur beim Öffnen neu aufbauen, sonst springt der Fokus)
-  $("safeZielList").innerHTML = X.sg.map((g,gi)=>`<label for="szt-${gi}"><span class="dot" style="background:${SCOL(gi)}"></span>${esc(g.name||`Baustein ${gi+1}`)}</label>
-    <input type="number" inputmode="decimal" min="0" max="100" step="1" id="szt-${gi}" data-szt="${gi}" value="${+g.ziel||0}" aria-label="Ziel % ${esc(g.name||"")}">`).join("");
+  $("safeZielList").className = "zv-list n3";
+  $("safeZielList").innerHTML = X.sg.map((g,gi)=>`<span class="dot" style="background:${SCOL(gi)}"></span>
+    <input type="text" class="name" id="szn-${gi}" data-szn="${gi}" value="${esc(g.name)}" placeholder="Name Baustein ${gi+1}" aria-label="Name Baustein ${gi+1}">
+    <input type="number" inputmode="decimal" min="0" max="100" step="1" id="szt-${gi}" data-szt="${gi}" value="${+g.ziel||0}" aria-label="Ziel % Baustein ${gi+1}">
+    ${X.sg.length>1 ? `<button class="del" data-szdel="${gi}" title="Baustein entfernen" aria-label="Baustein entfernen">×</button>` : "<span></span>"}`).join("") +
+    `<button class="add small" id="szAdd" style="grid-column:1/-1">+ Baustein hinzufügen</button>`;
+  const b = $("szAdd"); b.disabled = X.sg.length>=MAXG; if (b.disabled) b.textContent = `Maximal ${MAXG} Bausteine`;
 }
 function renderSafeZiel(){
   const sum = sZielSum(), ok = Math.abs(sum-100) < 0.001, band = (X.safePlan && X.safePlan.band) || 0;
-  bar("barSafeZiel", X.sg.map((g,gi)=>({l:esc(g.name||`Baustein ${gi+1}`), v:+g.ziel||0, c:SCOL(gi)})));
+  bar("barSafeZiel", X.sg.map((g,gi)=>({l:g.name||`Baustein ${gi+1}`, v:+g.ziel||0, c:SCOL(gi)})));
   $("safeZielTxt").innerHTML = !X.sg.length ? "" : ok
     ? `Toleranzband ± ${band.toLocaleString("de-DE")} pp je Baustein.` +
       (X.sg.some(g=>!(+g.ziel)) ? `<br>ℹ️ ${X.sg.filter(g=>!(+g.ziel)).map(g=>`„${esc(g.name||"ohne Namen")}“`).join(", ")} hat noch kein Ziel (0 %) – mit ✎ anpassen.` : "")
@@ -1169,7 +1173,10 @@ function renderSafeZiel(){
   $("safeZielSum").innerHTML = ok ? `Summe ${pct(sum,0)} ✅` : `<span class="warn">Summe ${pct(sum,0)} – ${sum<100?`noch ${pct(100-sum,0)} verteilen`:`${pct(sum-100,0)} zu viel`}</span>`;
 }
 function safeZielEdit(on){
-  if (on){ buildSafeZiel(); $("safeZiel").classList.add("editing"); renderSafeZiel(); $("szt-0")?.focus(); return; }
+  const noName = () => X.sg.findIndex(g=>!(g.name||"").trim());
+  if (on){ buildSafeZiel(); $("safeZiel").classList.add("editing"); renderSafeZiel();
+    (noName() >= 0 ? $("szn-"+noName()) : $("szt-0"))?.focus(); return; }
+  if (noName() >= 0){ $("szn-"+noName())?.focus(); return; }                // jeder Baustein braucht einen Namen
   if (Math.abs(sZielSum()-100) >= 0.001){ renderSafeZiel(); return; }        // nur mit Summe 100 % schließen
   $("safeZiel").classList.remove("editing"); buildSafe(); touch(); renderAll();
 }
@@ -1179,17 +1186,31 @@ document.addEventListener("click", ev=>{
 });
 document.addEventListener("input", ev=>{ const t = ev.target; if (t.dataset.szt === undefined) return;
   X.sg[+t.dataset.szt].ziel = Math.max(0, +t.value || 0); });
-document.addEventListener("keydown", ev=>{ if (ev.key==="Enter" && ev.target.dataset.szt !== undefined){ ev.preventDefault(); safeZielEdit(false); } });
+document.addEventListener("input", ev=>{ const t = ev.target; if (t.dataset.szn === undefined) return;
+  X.sg[+t.dataset.szn].name = t.value; });
+document.addEventListener("keydown", ev=>{ if (ev.key==="Enter" && (ev.target.dataset.szt !== undefined || ev.target.dataset.szn !== undefined)){ ev.preventDefault(); safeZielEdit(false); } });
+document.addEventListener("click", ev=>{
+  const del = ev.target.closest("[data-szdel]");
+  if (del){
+    const gi = +del.dataset.szdel, g = X.sg[gi], sum = g.pos.reduce((a,x)=>a+(+x.saldo||0),0);
+    if (!confirm(`Baustein „${g.name||"ohne Namen"}“ mit ${g.pos.length} Position(en)${sum?` und ${eur(sum)}`:""} entfernen?`)) return;
+    X.sg.splice(gi,1); buildSafeZiel(); buildSafe(); touch(); renderAll(); return;
+  }
+  if (ev.target.closest("#szAdd")){
+    if (X.sg.length >= MAXG) return;
+    X.sg.push({key:"S"+Date.now().toString(36), name:"", ziel:0, locked:false, pos:[{name:"", wkn:"", saldo:0, zins:0, spar:true}]});
+    buildSafeZiel(); buildSafe(); touch(); renderAll(); $("szn-"+(X.sg.length-1))?.focus();
+  }
+});
 function safeLock(gi, on){
   const g = X.sg[gi];
   if (on){
     const q = (c,pi) => document.querySelector(`[data-s="${c}"][data-g="${gi}"]${pi!==undefined?`[data-p="${pi}"]`:""}`);
-    if (!(g.name||"").trim()){ q("gname")?.focus(); return; }
     const miss = g.pos.findIndex(x=>!(x.name||"").trim());
     if (miss >= 0){ q("pname",miss)?.focus(); return; }
   }
   g.locked = on; buildSafe(); touch(); renderAll();
-  if (!on) document.querySelector(`[data-s="gname"][data-g="${gi}"]`)?.focus();
+  if (!on) document.querySelector(`[data-s="pname"][data-g="${gi}"]`)?.focus();
 }
 document.addEventListener("input", ev=>{          // läuft vor dem allgemeinen Handler (der danach renderAll aufruft)
   const t = ev.target, c = t.dataset.s; if (!c) return;
@@ -1252,7 +1273,8 @@ function applySafeTemplate(i){
   X.sg = T.g.map(([name,ziel],k)=>({key:`S${k}${stamp}`, name, ziel, locked:false,
     pos:[{name, wkn:"", saldo:0, zins:0, spar:true}]}));
   buildSafe(); touch(); renderAll();
-  document.querySelector(`[data-s="${T.g[0][0] ? "wkn" : "gname"}"][data-g="0"]`)?.focus();
+  if (T.g[0][0]) document.querySelector(`[data-s="wkn"][data-g="0"]`)?.focus();
+  else safeZielEdit(true);                              // „Leer“: Bausteine oben benennen
 }
 document.addEventListener("click", ev=>{ const b = ev.target.closest("[data-stpl]"); if (b) applySafeTemplate(+b.dataset.stpl); });
 const BUILD = {etfs:()=>buildEtfs(), stocks:()=>buildStocks(), safe:()=>buildSafe()};
@@ -1500,7 +1522,7 @@ function renderAll(){
     ` Das Rebalancing der Gesamtsparrate ist optional und ändert erst etwas, wenn du den Vorschlag übernimmst.`;
   $("lblMixZiel").innerHTML = `Ziel ${nA} (%)`;
   // Karte Zielverteilung: Ansicht (Balken + Text) / Bearbeiten (nur Anteil Teil 1, Rest automatisch)
-  bar("barAvZiel", hasZ ? [{l:esc(coreShort()), v:zZ, c:"var(--c1)"}, {l:esc(safeShort()), v:1-zZ, c:"var(--c5)"}] : []);
+  bar("barAvZiel", hasZ ? [{l:coreShort(), v:zZ, c:"var(--c1)"}, {l:safeShort(), v:1-zZ, c:"var(--c5)"}] : []);
   $("avZielTxt").innerHTML = hasZ ? `Toleranzband ${bandTxt}: ${nA} darf zwischen ${p0(zLo)} und ${p0(zHi)} liegen.` : `Noch kein Ziel festgelegt – mit ✎ eintragen.`;
   $("avZielRest").innerHTML = `${nB}: ${hasZ ? p0(1-zZ) : "–"}`;
   if (!hasZ && !document.activeElement?.closest?.("#avZiel")) $("avZiel").classList.add("editing");

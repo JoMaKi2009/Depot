@@ -87,6 +87,8 @@ Reiter 2–6 speichern unter `depot-rechner-extra-v1` (Objekt `X`).
 - **Zielverteilung** (`#safeZiel`, Karte vor „Bausteine & Positionen“) mit ✎/✓: Ziel % je Baustein **nur dort**
   (`buildSafeZiel()`/`renderSafeZiel()`), Summe live, Bestätigen nur bei 100 %; Hinweis bei Summe ≠ 100 % und bei
   Bausteinen mit 0 %. Baustein-Karten zeigen kein Ziel mehr. In der Vorlagenauswahl ausgeblendet.
+  **Bausteine werden dort angelegt** wie Reiter 1: Name + Ziel % + ×, „+ Baustein hinzufügen“ (`#szAdd`);
+  Karten „Bausteine & Positionen“ ohne Namensfeld/×/„+ Baustein“ – dort nur Positionen. Vorlage „Leer“ öffnet die Zielverteilung.
 - Steuer auf Zinsen fest 26,375 % (nur Info, kein Eingabefeld); Freibetrag `X.safeFrei` (leer = 0).
 
 ## Info-Reiter und Zurücksetzen
@@ -137,6 +139,5 @@ Reiter 2–6 speichern unter `depot-rechner-extra-v1` (Objekt `X`).
   Ist-Verteilung und Sparrate-Aufteilung (`.av-hide`) aus; Fazit zeigt ℹ️-Hinweis mit Links zu Reiter 1/2.
 
 ## Nächster Schritt
-Offen: Reiter 2 ebenso umstellen (Bausteine in der Zielverteilung benennen/anlegen/entfernen, unten nur Positionen)?
-– Rückfrage an Nutzerin/Nutzer. Danach Reiter 4 „Spielgeld ETFs“ analysieren (feste Broker-Spalten comdirect/Scalable,
+Reiter 4 „Spielgeld ETFs“ analysieren (feste Broker-Spalten comdirect/Scalable,
 „Spielgeld ETFs (Scalable)“ in Reiter 6). Offen (klein): „-0,00“ / „-0 €“ bei exakt 0 Abweichung.
