@@ -34,7 +34,7 @@ Sprache der App und der Kommunikation: **Deutsch**.
 0. **Info** (`#tab-daten`) – Infokasten, Sicherung (Export/Import, letzte Sicherung), CSV/PDF, „Alle Daten zurücksetzen“
 1. **Risikoreich** (`#tab-vorsorge`, Speicherschlüssel `depot-rechner-v1`) – Name frei wählbar – *generisch überarbeitet, fertig*
 2. **Risikoarm** (`#tab-safe`) – Konten und ETFs/Fonds – Name frei wählbar – *generisch überarbeitet, fertig*
-3. **Übersicht Altersvorsorge** (`#tab-av`) – Verhältnis risikoreich/risikoarm, optionales Rebalancing der Gesamtrate – *als Nächstes dran*
+3. **Übersicht Altersvorsorge** (`#tab-av`) – Verhältnis Reiter 1 / Reiter 2, optionales Rebalancing der Gesamtrate – Name frei wählbar – *in Arbeit (Schritte A, B fertig)*
 4. **Spielgeld ETFs** (`#tab-etfs`) – nur Erfassung, Broker-Spalten, Obergrenze
 5. **Spielgeld Aktien** (`#tab-spiel`) – nur Erfassung, Einstand, Obergrenze
 6. **Übersicht Gesamt** (`#tab-gesamt`)
@@ -103,6 +103,14 @@ Reiter 2–6 speichern unter `depot-rechner-extra-v1` (Objekt `X`).
 - Nach jedem Schritt: kurze Rückmeldung mit Screenshot (Handy-Viewport) und Ankündigung des nächsten Schritts.
 - Nach dem Push daran erinnern, in der App „Aktualisieren“ zu tippen.
 
+## Stand Reiter 3 „Übersicht“ (in Arbeit)
+- **A (fertig):** Alle Texte nutzen die aktuellen Namen aus Reiter 1/2 (`coreShort()`/`safeShort()`) statt
+  „risikoreich/risikoarm“; Einleitung nennt die eingestellten Zielwerte statt fest 60/40 – 70/30.
+- **B (fertig):** Reitername `X.avTab` (t1/t2) über ✎ (`avName()`/`avShort()`/`avLink()`). Bestehende Daten
+  (`X.mixZiel` gespeichert): „Übersicht / Altersvorsorge“, neue Nutzer: „Übersicht / Sparpläne“.
+  Wirkt auf Reiterleiste, PDF, Kennzahl, Fazit, Links in Reiter 1/2 und „Anteil …“ in Reiter 6.
+- Korridor nur vom Ziel nach oben (Ziel … darf tendieren bis) – fachliche Regel, unverändert.
+
 ## Nächster Schritt
-Reiter 3 „Übersicht Altersvorsorge“ analysieren: Was ist fest eingebaut (z. B. Ziel 60/40 bis 70/30,
-„risikoreich/risikoarm“ im Fließtext, Reitername) – Vorschläge machen, dann schrittweise umsetzen.
+Reiter 3: **C** neutrale Startwerte für Ziel/Obergrenze bei neuen Nutzern (leer mit Hinweis oder z. B. 50/60 –
+Rückfrage offen), **D** ℹ️-Hinweis im leeren Zustand mit Links zu Reiter 1/2.

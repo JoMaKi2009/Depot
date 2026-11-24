@@ -233,7 +233,7 @@
     <button data-tab="daten"><span class="t1">ℹ️</span>Info</button>
     <button data-tab="vorsorge" class="active" id="navCore"><span class="t1">Altersvorsorge</span>Risikoreich</button>
     <button data-tab="safe" id="navSafe"><span class="t1">Altersvorsorge</span>Risikoarm</button>
-    <button data-tab="av"><span class="t1">Übersicht</span>Altersvorsorge</button>
+    <button data-tab="av" id="navAv"><span class="t1">Übersicht</span>Altersvorsorge</button>
     <button data-tab="etfs"><span class="t1">Spielgeld</span>ETFs</button>
     <button data-tab="spiel"><span class="t1">Spielgeld</span>Aktien</button>
     <button data-tab="gesamt"><span class="t1">Übersicht</span>Gesamt</button>
@@ -395,8 +395,19 @@
 
   <!-- ============ ÜBERSICHT ALTERSVORSORGE ============ -->
   <section class="tab" id="tab-av" data-title="Übersicht Altersvorsorge">
-    <div class="pdf-title">Übersicht Altersvorsorge</div>
-    <p class="note" style="margin:0 0 14px">Risikoreicher und risikoarmer Teil zusammen. Ziel 60/40, darf Richtung 70/30 tendieren. Das Rebalancing der Gesamtsparrate ist optional und ändert erst etwas, wenn du den Vorschlag übernimmst.</p>
+    <div class="pdf-title" id="pdfAv">Übersicht Altersvorsorge</div>
+    <div class="tabhead" id="avHead">
+      <div class="th-view"><div><span class="th1" id="ath1"></span><span class="th2" id="ath2"></span></div>
+        <button class="ico" id="athEdit" title="Reiter umbenennen" aria-label="Reiter umbenennen">✎</button></div>
+      <div class="th-edit">
+        <div class="efields">
+          <label class="inl">Oberzeile<input type="text" id="avT1" maxlength="24" placeholder="z. B. Übersicht"></label>
+          <label class="inl">Name<input type="text" id="avT2" maxlength="24" placeholder="z. B. Altersvorsorge"></label>
+        </div>
+        <div class="eact"><button class="ico okb" id="athOk" title="Bestätigen (Enter)" aria-label="Bestätigen">✓</button></div>
+      </div>
+    </div>
+    <p class="note" style="margin:0 0 14px" id="avIntro"></p>
     <section class="card">
       <div class="kpis" id="avKpis"></div>
     </section>
@@ -409,13 +420,13 @@
     <section class="card">
       <h2>Sparplan</h2>
       <div class="row">
-        <div><label for="avRate">Sparrate gesamt Altersvorsorge (€/Monat)</label><input type="number" inputmode="decimal" id="avRate" min="0" step="1" placeholder="0"></div>
-        <div><label for="mixZiel">Ziel risikoreich (%)</label><input type="number" inputmode="decimal" id="mixZiel" min="0" max="100" step="1" value="60"></div>
+        <div><label for="avRate" id="lblAvRate">Sparrate gesamt (€/Monat)</label><input type="number" inputmode="decimal" id="avRate" min="0" step="1" placeholder="0"></div>
+        <div><label for="mixZiel" id="lblMixZiel">Ziel (%)</label><input type="number" inputmode="decimal" id="mixZiel" min="0" max="100" step="1" value="60"></div>
         <div><label for="mixMax">Darf tendieren bis (%)</label><input type="number" inputmode="decimal" id="mixMax" min="0" max="100" step="1" value="70"></div>
-        <div><label for="avMinArm">Mindestrate risikoarm (€/Monat)</label><input type="number" inputmode="decimal" id="avMinArm" min="0" step="1" value="0"></div>
+        <div><label for="avMinArm" id="lblAvMin">Mindestrate (€/Monat)</label><input type="number" inputmode="decimal" id="avMinArm" min="0" step="1" value="0"></div>
       </div>
       <p class="note" id="avRateNote"></p>
-      <p style="margin:14px 0 0"><label class="check"><input type="checkbox" id="avReb"> Rebalancing: Gesamtsparrate auf risikoreich / risikoarm aufteilen</label></p>
+      <p style="margin:14px 0 0"><label class="check"><input type="checkbox" id="avReb"> <span id="avRebTxt">Rebalancing: Gesamtsparrate aufteilen</span></label></p>
     </section>
     <section class="card">
       <h2>Sparrate – Aufteilung</h2>
@@ -424,11 +435,11 @@
       <p class="note" id="mixnote"></p>
       <div id="avRebBox" style="display:none">
         <button class="btn" id="avApply">Vorschlag übernehmen</button>
-        <p class="note">Übernehmen trägt die beiden Beträge als „Sparrate gesamt“ in die Reiter Risikoreich und Risikoarm ein – dort wird dann wie gewohnt innerhalb des Teils aufgeteilt.</p>
+        <p class="note" id="avApplyNote"></p>
       </div>
       <div id="avUndoBox" style="display:none">
         <button class="btn sec" id="avUndo"></button>
-        <p class="note">Stellt die Sparraten von vor dem letzten Übernehmen in beiden Reitern wieder her – auch wenn die Checkbox inzwischen aus ist.</p>
+        <p class="note">Stellt die Sparraten von vor dem letzten Übernehmen in beiden Teilen wieder her – auch wenn die Checkbox inzwischen aus ist.</p>
       </div>
     </section>
     <section class="card"><p class="fazit" id="avFazit"></p></section>
@@ -913,6 +924,9 @@ if (!Array.isArray(X.sg)){
   delete X.safe; if (X.safePlan) delete X.safePlan.ziel;
 }
 if (X.tax === undefined) X.tax = 26.375;
+// Reitername Übersicht: bestehende Daten (Ziel schon gespeichert) behalten den alten Namen
+if (!X.avTab || typeof X.avTab !== "object")
+  X.avTab = X.mixZiel !== undefined ? {t1:"Übersicht", t2:"Altersvorsorge"} : {t1:"Übersicht", t2:"Sparpläne"};
 [...X.etfs, ...X.stocks].forEach(e=>{ if (e.wkn===undefined){ e.wkn=""; e.name=(e.name||"").replace(/\s*\(WKN …\)\s*$/,""); } e.locked=!!e.locked; });
 const safeName  = () => [X.safeTab.t1, X.safeTab.t2].map(x=>(x||"").trim()).filter(Boolean).join(" – ") || "Sicherheitsbaustein";
 const safeShort = () => (X.safeTab.t2||"").trim() || (X.safeTab.t1||"").trim() || "Sicherheitsbaustein";
@@ -923,6 +937,25 @@ function renderSafeName(){
   $("tab-safe").dataset.title = safeName(); if (!document.body.classList.contains("pdf-mode")) $("pdfSafe").textContent = safeName();
 }
 $("safeT1").value = X.safeTab.t1 || ""; $("safeT2").value = X.safeTab.t2 || "";
+const avName  = () => [X.avTab.t1, X.avTab.t2].map(x=>(x||"").trim()).filter(Boolean).join(" – ") || "Übersicht";
+const avShort = () => (X.avTab.t2||"").trim() || (X.avTab.t1||"").trim() || "Übersicht";
+const avLink  = () => `<a href="#" class="goto" data-goto="av">→ ${esc(avName())}</a>`;
+function renderAvName(){
+  $("ath1").textContent = (X.avTab.t1||"").trim(); $("ath2").textContent = avShort();
+  $("navAv").innerHTML = `<span class="t1">${esc((X.avTab.t1||"").trim()) || "&nbsp;"}</span>${esc(avShort())}`;
+  $("tab-av").dataset.title = avName(); if (!document.body.classList.contains("pdf-mode")) $("pdfAv").textContent = avName();
+}
+$("avT1").value = X.avTab.t1 || ""; $("avT2").value = X.avTab.t2 || "";
+function avHeadEdit(on){
+  if (!on && !$("avT2").value.trim() && !$("avT1").value.trim()){ $("avT2").focus(); return; }
+  $("avHead").classList.toggle("editing", on);
+  if (on) $("avT2").focus(); else { touch(); renderAll(); }
+}
+document.addEventListener("click", ev=>{
+  if (ev.target.closest("#athEdit")) avHeadEdit(true);
+  else if (ev.target.closest("#athOk")) avHeadEdit(false);
+});
+document.addEventListener("keydown", ev=>{ if (ev.key==="Enter" && (ev.target.id==="avT1"||ev.target.id==="avT2")){ ev.preventDefault(); avHeadEdit(false); } });
 function safeHeadEdit(on){
   if (!on && !$("safeT2").value.trim() && !$("safeT1").value.trim()){ $("safeT2").focus(); return; }
   $("safeHead").classList.toggle("editing", on);
@@ -1120,6 +1153,7 @@ function renderExtra(){
   $("resetEtfs").parentNode.style.display = X.etfs.length ? "" : "none";
   $("resetStocks").parentNode.style.display = X.stocks.length ? "" : "none";
   X.safeTab = {t1:$("safeT1").value, t2:$("safeT2").value}; renderSafeName();
+  X.avTab = {t1:$("avT1").value, t2:$("avT2").value}; renderAvName();
   save(XSTORE, X);
 
   // Spielgeld ETFs
@@ -1233,8 +1267,8 @@ function renderSafe(){
   } else if (rate <= 0){
     const fromAV = X.avApplied && X.avApplied[1] === 0;
     spF = fromAV
-      ? `ℹ️ <strong>${esc(safeShort())}:</strong> Sparrate aktuell 0 € – übernommen aus dem Rebalancing in der Übersicht Altersvorsorge. Dieser Teil liegt über dem Zielkorridor und wird vorerst nicht bespart; die Gesamtrate fließt in „${esc(coreShort())}“. <a href="#" class="goto" data-goto="av">→ Übersicht Altersvorsorge</a>`
-      : `<span class="empty">Sparrate gesamt eintragen – oder über das Rebalancing in der <a href="#" class="goto" data-goto="av">Übersicht Altersvorsorge</a> berechnen lassen.</span>`;
+      ? `ℹ️ <strong>${esc(safeShort())}:</strong> Sparrate aktuell 0 € – übernommen aus dem Rebalancing in „${esc(avName())}“. Dieser Teil liegt über dem Zielkorridor und wird vorerst nicht bespart; die Gesamtrate fließt in „${esc(coreShort())}“. ${avLink()}`
+      : `<span class="empty">Sparrate gesamt eintragen – oder über das Rebalancing in <a href="#" class="goto" data-goto="av">„${esc(avName())}“</a> berechnen lassen.</span>`;
   } else if (noSpar.length){
     spF = `⚠️ ${lbl} In ${noSpar.map(g=>esc(g.name)).join(", ")} ist keine Position als „wird bespart“ markiert.`;
   } else if (rate < n*m){
@@ -1313,6 +1347,16 @@ function renderAll(){
     {l:esc(safeShort()),         v:sf.total,   c:"var(--c5)"},
   ];
   const rIst = vorsorge ? CORE.total/vorsorge : 0;
+  const nA = `„${esc(coreShort())}“`, nB = `„${esc(safeShort())}“`;   // aktuelle Namen aus Reiter 1 und 2
+  const pA = v => `${pct(v*100,0)} ${nA}`;
+  $("avIntro").innerHTML = `${nA} und ${nB} zusammen. Ziel ${pA(zLo)}` +
+    (zHi > zLo + 1e-9 ? `, darf bis ${pA(zHi)} tendieren.` : ".") +
+    ` Das Rebalancing der Gesamtsparrate ist optional und ändert erst etwas, wenn du den Vorschlag übernimmst.`;
+  $("lblMixZiel").innerHTML = `Ziel ${nA} (%)`;
+  $("lblAvRate").innerHTML = `Sparrate gesamt „${esc(avShort())}“ (€/Monat)`;
+  $("lblAvMin").innerHTML = `Mindestrate ${nB} (€/Monat)`;
+  $("avRebTxt").innerHTML = `Rebalancing: Gesamtsparrate auf ${nA} / ${nB} aufteilen`;
+  $("avApplyNote").innerHTML = `Übernehmen trägt die beiden Beträge als „Sparrate gesamt“ in ${nA} und ${nB} ein – dort wird dann wie gewohnt innerhalb des Teils aufgeteilt.`;
 
   // Ist-Verteilung Vermögen
   bar("barMix", mix);
@@ -1325,9 +1369,9 @@ function renderAll(){
   let st = "";
   if (vorsorge){
     const r = pct(rIst*100,1), q = pct((1-rIst)*100,1);
-    if (rIst < zLo - 1e-9)      st = `<span class="warn stbox">⚠️ Risikoreich bei ${r} – unter dem Ziel von ${pct(zLo*100,0)}. Bis zum Ziel fehlen im risikoreichen Teil ca. ${eur(zLo*vorsorge - CORE.total)} (bei gleichem Gesamtbetrag).</span>`;
-    else if (rIst > zHi + 1e-9) st = `<span class="warn stbox">⚠️ Risikoreich bei ${r} – über der Obergrenze von ${pct(zHi*100,0)}. Der risikoarme Teil liegt ca. ${eur(CORE.total - zHi*vorsorge)} unter der Grenze.</span>`;
-    else                        st = `<span class="ok stbox">✅ Verhältnis ${r} / ${q} – im Zielkorridor ${pct(zLo*100,0)}–${pct(zHi*100,0)} risikoreich.</span>`;
+    if (rIst < zLo - 1e-9)      st = `<span class="warn stbox">⚠️ ${nA} bei ${r} – unter dem Ziel von ${pct(zLo*100,0)}. Bis zum Ziel fehlen in ${nA} ca. ${eur(zLo*vorsorge - CORE.total)} (bei gleichem Gesamtbetrag).</span>`;
+    else if (rIst > zHi + 1e-9) st = `<span class="warn stbox">⚠️ ${nA} bei ${r} – über der Obergrenze von ${pct(zHi*100,0)}. ${nB} liegt ca. ${eur(CORE.total - zHi*vorsorge)} unter der Grenze.</span>`;
+    else                        st = `<span class="ok stbox">✅ Verhältnis ${r} ${nA} / ${q} ${nB} – im Zielkorridor ${zHi > zLo + 1e-9 ? `${pct(zLo*100,0)}–${pct(zHi*100,0)}` : pct(zLo*100,0)} ${nA}.</span>`;
   }
   $("mixstatus").innerHTML = st;
 
@@ -1336,7 +1380,7 @@ function renderAll(){
   const rTot = rCur[0] + rCur[1];
   const rShare = rTot ? rCur[0]/rTot : 0;
   const S_AV = X.avRate > 0 ? X.avRate : rTot;
-  $("avRateNote").textContent = `Aktuell eingestellt: ${eur(rCur[0])} risikoreich + ${eur(rCur[1])} risikoarm = ${eur(rTot)}.` +
+  $("avRateNote").innerHTML = `Aktuell eingestellt: ${eur(rCur[0])} ${nA} + ${eur(rCur[1])} ${nB} = ${eur(rTot)}.` +
     (X.avRate > 0 ? (X.avRate !== rTot ? ` Der Vorschlag rechnet mit ${eur(X.avRate)}.` : "") : " Leer lassen = aktuelle Summe verwenden.");
 
   // Sparrate – Aufteilung
@@ -1348,7 +1392,7 @@ function renderAll(){
   ];
   const f = k => k===null ? "mehr als 50 Jahre" : (k===1 ? "1 Monat" : k+" Monaten");
   let note = "", fz = "";
-  const AVL = `<strong>Altersvorsorge gesamt (Ziel ${pct(zLo*100,0)}/${pct((1-zLo)*100,0)}, bis ${pct(zHi*100,0)}/${pct((1-zHi)*100,0)}):</strong>`;
+  const AVL = `<strong>${esc(avShort())} gesamt (Ziel ${pct(zLo*100,0)}/${pct((1-zLo)*100,0)}${zHi > zLo + 1e-9 ? `, bis ${pct(zHi*100,0)}/${pct((1-zHi)*100,0)}` : ""}):</strong>`;
   const rateOk = rTot && inCorr(rShare), vermOk = vorsorge && inCorr(rIst);
 
   if (!X.avReb){
@@ -1357,10 +1401,10 @@ function renderAll(){
       rateMix.map((m,i)=>`<tr><td><span class="dot" style="background:${m.c}"></span>${m.l}</td>
         <td>${eur(m.v)}</td><td>${eur(m.v*12)}</td><td>${rTot?pct(m.v/rTot*100,1):"–"}</td><td>${pct(zielFor(i)*100,0)}</td><td>${korrFor(i)}</td></tr>`).join("") +
       `</tbody><tfoot><tr><td>Gesamt</td><td>${eur(rTot)}</td><td>${eur(rTot*12)}</td><td>${rTot?pct(100,1):"–"}</td><td>${pct(100,0)}</td><td></td></tr></tfoot>`;
-    note = rTot ? `Bleiben die Sparraten so, bewegt sich das Vermögens-Verhältnis langfristig Richtung ${pct(rShare*100,1)} risikoreich (Kurse und Zinsen nicht berücksichtigt).` : "";
-    if (!rTot) fz = `<span class="empty">Sparraten in den Reitern Risikoreich und Risikoarm eintragen.</span>`;
+    note = rTot ? `Bleiben die Sparraten so, bewegt sich das Vermögens-Verhältnis langfristig Richtung ${pct(rShare*100,1)} ${nA} (Kurse und Zinsen nicht berücksichtigt).` : "";
+    if (!rTot) fz = `<span class="empty">Sparraten in <a href="#" class="goto" data-goto="vorsorge">${nA}</a> und <a href="#" class="goto" data-goto="safe">${nB}</a> eintragen.</span>`;
     else if (vermOk && rateOk) fz = `✅ ${AVL} Vermögen und Sparraten liegen im Korridor – Sparplan so lassen.`;
-    else fz = `⚠️ ${AVL} ${!vermOk?"Vermögen":""}${!vermOk&&!rateOk?" und ":""}${!rateOk?`Sparraten (${pct(rShare*100,1)} risikoreich)`:""} außerhalb des Korridors – Rebalancing oben aktivieren, um einen Vorschlag zu sehen.`;
+    else fz = `⚠️ ${AVL} ${!vermOk?"Vermögen":""}${!vermOk&&!rateOk?" und ":""}${!rateOk?`Sparraten (${pct(rShare*100,1)} ${nA})`:""} außerhalb des Korridors – Rebalancing oben aktivieren, um einen Vorschlag zu sehen.`;
   } else {
     const minsAV = [CS.groups.length*Math.round(num("min")), Math.max(Math.round(X.avMinArm||0), X.sg.length*Math.round(X.safePlan.min||0))];
     const okAV = v => { const T=v[0]+v[1]; return T>0 && inCorr(v[0]/T); };
@@ -1369,7 +1413,7 @@ function renderAll(){
       const t = r < zLo ? zLo : zHi; return gRebal(v, [t,1-t], S_AV, minsAV); };
     const valsAV = [CORE.total, sf.total];
     if (!S_AV){ fz = `<span class="empty">Sparrate gesamt eintragen.</span>`; $("rateMixTable").innerHTML=""; bar("barRateMix",[]); }
-    else if (S_AV < minsAV[0]+minsAV[1]){ fz = `<span class="err">Sparrate (${eur(S_AV)}) reicht nicht für die Mindestraten (${eur(minsAV[0])} risikoreich, ${eur(minsAV[1])} risikoarm).</span>`; $("rateMixTable").innerHTML=""; bar("barRateMix",[]); }
+    else if (S_AV < minsAV[0]+minsAV[1]){ fz = `<span class="err">Sparrate (${eur(S_AV)}) reicht nicht für die Mindestraten (${eur(minsAV[0])} ${nA}, ${eur(minsAV[1])} ${nB}).</span>`; $("rateMixTable").innerHTML=""; bar("barRateMix",[]); }
     else {
       const a = roundTo(stepAV(valsAV), S_AV); AV_SUGGEST = a;
       bar("barRateMix", rateMix.map((m,i)=>({...m, v:a[i]})));
@@ -1379,28 +1423,28 @@ function renderAll(){
         `</tbody><tfoot><tr><td>Summe</td><td>${eur(rTot)}</td><td>${eur(a[0]+a[1])}</td><td>${pct(100,1)}</td><td>${signEur(a[0]+a[1]-rTot)}</td></tr></tfoot>`;
       note = (vermOk ? `Vermögen liegt im Korridor – Vorschlag ist die Zielaufteilung ${pct(zLo*100,0)}/${pct((1-zLo)*100,0)}.`
                      : `Vermögen liegt außerhalb des Korridors – zurück im Korridor nach ca. ${f(gMonths(valsAV, stepAV, okAV))} (Kurse/Zinsen nicht berücksichtigt).`)
-           + ` Mindestraten: ${eur(minsAV[0])} risikoreich (${CS.groups.length} × Mindestrate), ${eur(minsAV[1])} risikoarm.`;
+           + ` Mindestraten: ${eur(minsAV[0])} ${nA} (${CS.groups.length} × Mindestrate), ${eur(minsAV[1])} ${nB}.`;
       const same = a[0]===rCur[0] && a[1]===rCur[1];
       fz = same ? `✅ ${AVL} Sparplan entspricht dem Vorschlag – nichts zu ändern.`
-                : `⚠️ ${AVL} Sparplan auf den Vorschlag umstellen: ${eur(a[0])} risikoreich · ${eur(a[1])} risikoarm.`;
+                : `⚠️ ${AVL} Sparplan auf den Vorschlag umstellen: ${eur(a[0])} ${nA} · ${eur(a[1])} ${nB}.`;
     }
     $("avApply").disabled = !AV_SUGGEST || (AV_SUGGEST[0]===rCur[0] && AV_SUGGEST[1]===rCur[1]);
   }
-  $("mixnote").textContent = note;
+  $("mixnote").innerHTML = note;
   $("avFazit").innerHTML = fz;
   const U = X.avUndo;
   $("avUndoBox").style.display = U ? "" : "none";
-  if (U) $("avUndo").textContent = `↶ Rückgängig: zurück auf ${eur(U[0])} risikoreich · ${eur(U[1])} risikoarm`;
+  if (U) $("avUndo").innerHTML = `↶ Rückgängig: zurück auf ${eur(U[0])} ${nA} · ${eur(U[1])} ${nB}`;
 
   $("avKpis").innerHTML = [
-    ["Altersvorsorge gesamt", eur(vorsorge)],
+    [`${esc(avShort())} gesamt`, eur(vorsorge)],
     ["Sparrate / Monat", eur(rTot)],
   ].map(([l,v])=>`<div class="kpi"><div class="l">${l}</div><div class="v">${v}</div></div>`).join("");
 
   $("kpis").innerHTML = [
     ["Gesamtvermögen", eur(total), total?pct(100,0):""],
     ["Sparrate / Monat", eur(rateTotal), ""],
-    ["Anteil Altersvorsorge", total?pct(vorsorge/total*100,1):"–", eur(vorsorge)],
+    [`Anteil ${esc(avShort())}`, total?pct(vorsorge/total*100,1):"–", eur(vorsorge)],
     ["Anteil Spielgeld", total?pct(spiel/total*100,1):"–", eur(spiel)],
   ].map(([l,v,sub])=>`<div class="kpi"><div class="l">${l}</div><div class="v">${v}</div>${sub?`<div class="s">${sub}</div>`:""}</div>`).join("");
 
@@ -1430,9 +1474,9 @@ function renderAll(){
   $("capnote").innerHTML    = capNote("Spielgeld Aktien", ex.stockTotal, X.cap);
   renderStand();
   // Herkunft der Sparraten anzeigen (aus Rebalancing Übersicht Altersvorsorge übernommen?)
-  const A = X.avApplied, link = `<a href="#" class="goto" data-goto="av">→ Übersicht Altersvorsorge</a>`;
-  $("coreSrc").innerHTML = A && A[0] === CORE.rate ? `ℹ️ Sparrate gesamt (${eur(A[0])}) wurde aus dem Rebalancing der Altersvorsorge gesamt übernommen. ${link}` : "";
-  $("spSrc").innerHTML   = A && A[1] === sf.rate   ? `ℹ️ Sparrate gesamt (${eur(A[1])}) wurde aus dem Rebalancing der Altersvorsorge gesamt übernommen. ${link}` : "";
+  const A = X.avApplied, link = avLink();
+  $("coreSrc").innerHTML = A && A[0] === CORE.rate ? `ℹ️ Sparrate gesamt (${eur(A[0])}) wurde aus dem Rebalancing in „${esc(avName())}“ übernommen. ${link}` : "";
+  $("spSrc").innerHTML   = A && A[1] === sf.rate   ? `ℹ️ Sparrate gesamt (${eur(A[1])}) wurde aus dem Rebalancing in „${esc(avName())}“ übernommen. ${link}` : "";
 
   // Fazit-Boxen einfärben: ✅ = hellgrün, ⚠️ = hellorange
   ["fazit","spFazit","avFazit"].forEach(id=>{
