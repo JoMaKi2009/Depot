@@ -105,6 +105,8 @@ Reiter 2–6 speichern unter `depot-rechner-extra-v1` (Objekt `X`).
 - Reiter Info erscheint nicht im PDF/Druck.
 
 ## UI-Konventionen
+- Zielverteilung in Reiter 1/2/3 als **Ring** (`ring()`): Segmente mit 2px Lücke, Mitte „x Bausteine“, Legende mit Name + %.
+  Ist-Verteilung und Sparrate bleiben Balken (`bar()`).
 - Bearbeiten-Muster: Ansicht mit ✎ → Felder → ✓ oder Enter bestätigt.
 - Hinweis-Farben einheitlich: grün ✅ = in Ordnung, orange ⚠️ = Handlungsbedarf, blau ℹ️ = Info
   (Klassen `.card.st-ok/.st-warn/.st-info`, `.stbox.ok/.warn/.info`).

@@ -157,6 +157,12 @@
   .zv-head h2{margin:0}
   .zv-edit{display:none} .zv-card.editing .zv-view{display:none} .zv-card.editing .zv-edit{display:block}
   .zv-view .bar{margin-top:12px}
+  .ring-wrap{display:flex;align-items:center;gap:18px;margin-top:12px}
+  .ring-wrap svg{flex:none;width:140px;height:140px}
+  .ring-wrap .rn{font-size:22px;font-weight:700;fill:var(--text)} .ring-wrap .rl{font-size:12px;fill:var(--muted)}
+  .ring-leg{flex:1;min-width:0;font-size:15px}
+  .ring-leg div{display:flex;align-items:center;gap:8px;margin:6px 0}
+  .ring-leg .dot{margin:0;flex:none} .ring-leg .n{flex:1;min-width:0;overflow-wrap:anywhere}
   .zv-row{display:flex;align-items:flex-end;gap:10px;margin-top:12px}
   .zv-row > div{flex:1}
   .zv-rest{margin:0 0 12px;white-space:nowrap}
@@ -315,7 +321,7 @@
     <section class="card zv-card" id="coreZiel">
       <div class="zv-head"><h2>Zielverteilung</h2>
         <button class="ico" id="coreZielEdit" title="Ziel bearbeiten" aria-label="Ziel bearbeiten">✎</button></div>
-      <div class="zv-view"><div class="bar" id="barCoreZiel"></div><p class="note" id="coreZielTxt"></p></div>
+      <div class="zv-view"><div id="ringCoreZiel"></div><p class="note" id="coreZielTxt"></p></div>
       <div class="zv-edit">
         <div class="zv-list" id="coreZielList"></div>
         <div class="zv-foot"><p class="note" id="coreZielSum"></p>
@@ -385,7 +391,7 @@
     <section class="card zv-card" id="safeZiel">
       <div class="zv-head"><h2>Zielverteilung</h2>
         <button class="ico" id="safeZielEdit" title="Ziel bearbeiten" aria-label="Ziel bearbeiten">✎</button></div>
-      <div class="zv-view"><div class="bar" id="barSafeZiel"></div><p class="note" id="safeZielTxt"></p></div>
+      <div class="zv-view"><div id="ringSafeZiel"></div><p class="note" id="safeZielTxt"></p></div>
       <div class="zv-edit">
         <div class="zv-list" id="safeZielList"></div>
         <div class="zv-foot"><p class="note" id="safeZielSum"></p>
@@ -451,7 +457,7 @@
     <section class="card zv-card" id="avZiel">
       <div class="zv-head"><h2>Zielverteilung</h2>
         <button class="ico" id="avZielEdit" title="Ziel bearbeiten" aria-label="Ziel bearbeiten">✎</button></div>
-      <div class="zv-view"><div class="bar" id="barAvZiel"></div><p class="note" id="avZielTxt"></p></div>
+      <div class="zv-view"><div id="ringAvZiel"></div><p class="note" id="avZielTxt"></p></div>
       <div class="zv-edit">
         <div class="zv-row">
           <div><label for="mixZiel" id="lblMixZiel">Ziel (%)</label><input type="number" inputmode="decimal" id="mixZiel" min="0" max="100" step="1" placeholder="z. B. 60"></div>
@@ -745,7 +751,7 @@ function buildCoreZiel(){
 }
 function renderCoreZiel(){
   const sum = cZielSum(), ok = Math.abs(sum-100) < 0.001;
-  bar("barCoreZiel", CS.groups.map((g,gi)=>({l:g.name||`Baustein ${gi+1}`, v:+g.ziel||0, c:CORECOL[gi]})));
+  ring("ringCoreZiel", CS.groups.map((g,gi)=>({l:g.name||`Baustein ${gi+1}`, v:+g.ziel||0, c:CORECOL[gi]})), "Baustein", "Bausteine");
   const zero = CS.groups.filter(g=>!(+g.ziel));
   $("coreZielTxt").innerHTML = !CS.groups.length ? "" : ok
     ? `Toleranzband ± ${(CS.band||0).toLocaleString("de-DE")} pp je Baustein.` +
@@ -1192,7 +1198,7 @@ function buildSafeZiel(){                 // Eingabefelder (nur beim Öffnen neu
 }
 function renderSafeZiel(){
   const sum = sZielSum(), ok = Math.abs(sum-100) < 0.001, band = (X.safePlan && X.safePlan.band) || 0;
-  bar("barSafeZiel", X.sg.map((g,gi)=>({l:g.name||`Baustein ${gi+1}`, v:+g.ziel||0, c:SCOL(gi)})));
+  ring("ringSafeZiel", X.sg.map((g,gi)=>({l:g.name||`Baustein ${gi+1}`, v:+g.ziel||0, c:SCOL(gi)})), "Baustein", "Bausteine");
   $("safeZielTxt").innerHTML = !X.sg.length ? "" : ok
     ? `Toleranzband ± ${band.toLocaleString("de-DE")} pp je Baustein.` +
       (X.sg.some(g=>!(+g.ziel)) ? `<br>ℹ️ ${X.sg.filter(g=>!(+g.ziel)).map(g=>`„${esc(g.name||"ohne Namen")}“`).join(", ")} hat noch kein Ziel (0 %) – mit ✎ anpassen.` : "")
@@ -1531,6 +1537,21 @@ function bar(id, parts){
   if (!leg){ leg = document.createElement("div"); leg.id = id+"Leg"; leg.className = "legend"; $(id).after(leg); }
   leg.innerHTML = T ? parts.map(p=>`<span><span class="dot" style="background:${p.c}"></span>${esc(p.l)} <strong>${pct(p.v/T*100,1)}</strong></span>`).join("") : "";
 }
+/* Ring (Donut) für die Zielverteilung: Segmente mit 2px Lücke, Mitte „x Bausteine“, Legende mit Name und % */
+function ring(id, parts, one, many){
+  const T = parts.reduce((a,p)=>a+p.v,0);
+  if (!T){ $(id).innerHTML = ""; return; }
+  const R = 52, W = 18, C = 2*Math.PI*R, gap = parts.filter(p=>p.v>0).length > 1 ? 2 : 0;
+  let off = 0, arcs = "";
+  parts.forEach(p=>{ if (p.v <= 0) return; const len = p.v/T*C;
+    arcs += `<circle r="${R}" cx="70" cy="70" fill="none" stroke="${p.c}" stroke-width="${W}" stroke-dasharray="${Math.max(0.01,len-gap)} ${C}"
+      stroke-dashoffset="${-off}" transform="rotate(-90 70 70)"><title>${esc(p.l)}: ${pct(p.v/T*100,1)}</title></circle>`;
+    off += len; });
+  const n = parts.length, fmt = v => (Math.round(v*10)/10).toLocaleString("de-DE") + " %";
+  $(id).innerHTML = `<div class="ring-wrap"><svg viewBox="0 0 140 140" role="img" aria-label="Zielverteilung">${arcs}
+      <text class="rn" x="70" y="68" text-anchor="middle">${n}</text><text class="rl" x="70" y="88" text-anchor="middle">${n===1?one:many}</text></svg>
+    <div class="ring-leg">${parts.map(p=>`<div><span class="dot" style="background:${p.c}"></span><span class="n">${esc(p.l)}</span><strong>${fmt(p.v/T*100)}</strong></div>`).join("")}</div></div>`;
+}
 function shareTable(id, head, parts){
   const T = parts.reduce((a,p)=>a+p.v,0);
   $(id).innerHTML = `<thead><tr><th>${head}</th><th>Wert</th><th>Anteil</th></tr></thead><tbody>` +
@@ -1569,8 +1590,8 @@ function renderAll(){
     ` Das Rebalancing der Gesamtsparrate ist optional und ändert erst etwas, wenn du den Vorschlag übernimmst.`;
   $("lblMixZiel").innerHTML = `Ziel ${nA} (%)`;
   // Karte Zielverteilung: Ansicht (Balken + Text) / Bearbeiten (nur Anteil Teil 1, Rest automatisch)
-  bar("barAvZiel", hasZ ? [{l:coreShort(), v:zZ, c:"var(--c1)"}, {l:safeShort(), v:1-zZ, c:"var(--c5)"}] : []);
-  $("avZielTxt").innerHTML = hasZ ? `Toleranzband ${bandTxt}: ${nA} darf zwischen ${p0(zLo)} und ${p0(zHi)} liegen.` : `Noch kein Ziel festgelegt – mit ✎ eintragen.`;
+  ring("ringAvZiel", hasZ ? [{l:coreShort(), v:zZ*100, c:"var(--c1)"}, {l:safeShort(), v:100-zZ*100, c:"var(--c5)"}] : [], "Baustein", "Bausteine");
+  $("avZielTxt").innerHTML = hasZ ? "" : `Noch kein Ziel festgelegt – mit ✎ eintragen.`;
   $("avZielRest").innerHTML = `${nB}: ${hasZ ? p0(1-zZ) : "–"}`;
   if (!hasZ && !document.activeElement?.closest?.("#avZiel")) $("avZiel").classList.add("editing");
   $("lblAvRate").innerHTML = `Sparrate gesamt „${esc(avShort())}“ (€/Monat)`;
