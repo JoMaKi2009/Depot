@@ -905,7 +905,7 @@ if (!Array.isArray(X.sg)){
   const old = Array.isArray(X.safe) ? X.safe : [], zt = +(X.safePlan && X.safePlan.ziel);
   const by = {tg:[], anl:[]};
   old.forEach(o=>{ const art = o.art==="anl" ? "anl" : "tg";
-    by[art].push({name:(o.name||"").replace(/\s*\(WKN …\)\s*$/,""), wkn:o.wkn||"", art, saldo:+o.saldo||0, zins:+o.zins||0, spar:o.spar}); });
+    by[art].push({name:(o.name||"").replace(/\s*\(WKN …\)\s*$/,""), wkn:o.wkn||"", art, saldo:+o.saldo||0, zins: art==="anl" ? 0 : (+o.zins||0), spar:o.spar}); });
   Object.values(by).forEach(list=>list.forEach((q,i)=>{ if (q.spar===undefined) q.spar = i===0; q.spar = !!q.spar; }));
   const both = by.tg.length && by.anl.length, z = isFinite(zt) ? zt : 50;
   X.sg = [["tg","Konto", both ? z : 100], ["anl","ETF / Fonds", both ? 100-z : 100]]
@@ -977,24 +977,21 @@ function buildStocks(){
 }
 /* ---------- Reiter 2: Bausteine mit Positionen (wie Reiter 1) ---------- */
 const SCOL = gi => PALETTE[(gi+3) % PALETTE.length];
-const ARTL = {tg:"Konto", anl:"ETF / Fonds"};
 const posName = (q,pi) => (q.name||"").trim() || `Position ${pi+1}`;
 const posLabel = (q,pi) => esc(posName(q,pi)) + (q.wkn ? `<span class="wk">${esc(q.wkn)}</span>` : "");
 function safePos(gi, pi, q, n, L){
-  const a = `data-g="${gi}" data-p="${pi}"`, sub = q.art==="anl" ? "WKN" : "Anbieter", wk = q.art==="anl";
+  const a = `data-g="${gi}" data-p="${pi}"`;
   const head = L
     ? `<div class="inl"><span>Name</span><span class="rov">${esc(q.name)||"–"}</span></div>
-       <div class="inl"><span>${sub}</span><span class="rov${wk?" wkn":""}">${esc(q.wkn)||"–"}</span></div>
-       <div class="inl"><span>Art</span><span class="rov">${ARTL[q.art]}</span></div>`
+       <div class="inl"><span>Anbieter / WKN</span><span class="rov">${esc(q.wkn)||"–"}</span></div>`
     : `<div class="ehead"><div class="efields">
          <label class="inl">Name<input type="text" data-s="pname" ${a} value="${esc(q.name)}" placeholder="z. B. Tagesgeld"></label>
-         <label class="inl">${sub}<input type="text"${wk?' class="wkn"':""} data-s="wkn" ${a} value="${esc(q.wkn)}" placeholder="${sub}" maxlength="${wk?12:40}"></label>
-         <label class="inl">Art<select data-s="art" ${a}><option value="tg"${!wk?" selected":""}>Konto</option><option value="anl"${wk?" selected":""}>ETF / Fonds</option></select></label>
+         <label class="inl">Anbieter / WKN<input type="text" data-s="wkn" ${a} value="${esc(q.wkn)}" placeholder="Bank oder WKN" maxlength="40"></label>
        </div>${n>1?`<div class="eact"><button class="del" data-sdel="${gi}:${pi}" title="Position entfernen" aria-label="Position entfernen">×</button></div>`:""}</div>`;
   return `<div class="cetf${q.spar?" sp":""}">
     ${head}
-    <label class="inl">${wk?"Wert":"Stand"} (€)<input type="number" inputmode="decimal" min="0" step="0.01" data-s="saldo" ${a} value="${q.saldo||""}" placeholder="0"></label>
-    ${wk ? "" : `<label class="inl">Zins (%)<input type="number" inputmode="decimal" min="0" step="0.01" data-s="zins" ${a} value="${q.zins||""}" placeholder="0"></label>`}
+    <label class="inl">Wert (€)<input type="number" inputmode="decimal" min="0" step="0.01" data-s="saldo" ${a} value="${q.saldo||""}" placeholder="0"></label>
+    <label class="inl">Zins (%)<input type="number" inputmode="decimal" min="0" step="0.01" data-s="zins" ${a} value="${q.zins||""}" placeholder="leer = kein Zins"></label>
     <label class="check spr"><input type="checkbox" data-s="spar" ${a}${q.spar?" checked":""}> wird bespart</label>
     <div class="sum" id="psum-${gi}-${pi}" style="margin-top:4px"></div>
   </div>`;
@@ -1036,10 +1033,9 @@ document.addEventListener("input", ev=>{          // läuft vor dem allgemeinen 
   if (c==="ziel"){ g.ziel = Math.max(0, +t.value || 0); return; }
   const q = g.pos[+t.dataset.p];
   if (c==="pname") q.name = t.value;
-  else if (c==="wkn") q.wkn = q.art==="anl" ? t.value.toUpperCase().trim() : t.value;
+  else if (c==="wkn") q.wkn = t.value;
   else if (c==="saldo" || c==="zins") q[c] = Math.max(0, +t.value || 0);
   else if (c==="spar"){ q.spar = t.checked; t.closest(".cetf").classList.toggle("sp", q.spar); }
-  else if (c==="art"){ q.art = t.value; if (q.art==="anl") q.wkn = (q.wkn||"").toUpperCase().trim(); buildSafe(); }
 });
 document.addEventListener("keydown", ev=>{
   const t = ev.target;
@@ -1050,7 +1046,7 @@ document.addEventListener("click", ev=>{
   if (b.id==="sgadd"){
     if (X.sg.length>=MAXG) return;
     X.sg.forEach(g=>{ if (!g.locked && (g.name||"").trim() && g.pos.every(x=>(x.name||"").trim())) g.locked = true; });
-    X.sg.push({key:"S"+Date.now().toString(36), name:"", ziel:0, locked:false, pos:[{name:"", wkn:"", art:"tg", saldo:0, zins:0, spar:true}]});
+    X.sg.push({key:"S"+Date.now().toString(36), name:"", ziel:0, locked:false, pos:[{name:"", wkn:"", saldo:0, zins:0, spar:true}]});
     buildSafe(); touch(); renderAll();
     document.querySelector(`[data-s="gname"][data-g="${X.sg.length-1}"]`)?.focus();
     return;
@@ -1062,7 +1058,7 @@ document.addEventListener("click", ev=>{
   }
   else if (b.dataset.sadd !== undefined){
     const g = X.sg[+b.dataset.sadd], prev = g.pos[g.pos.length-1];
-    g.pos.push({name:"", wkn:"", art:prev?.art||"tg", saldo:0, zins:0, spar:false});
+    g.pos.push({name:"", wkn:"", saldo:0, zins:0, spar:false});
     buildSafe(); touch(); renderAll();
     [...document.querySelectorAll(`[data-s="pname"][data-g="${b.dataset.sadd}"]`)].pop()?.focus();
     return;
@@ -1073,10 +1069,10 @@ document.addEventListener("click", ev=>{
   buildSafe(); touch(); renderAll();
 });
 const SAFE_TPL = [
-  {t:"Nur Konto",              d:"Tagesgeld o. Ä. – die ganze Sparrate geht aufs Konto.", g:[["Tagesgeld",100,"tg"]]},
-  {t:"Konto + Anleihen-ETF",   d:"Je zur Hälfte Konto und Anleihen-ETF.",                g:[["Tagesgeld",50,"tg"],["Anleihen-ETF",50,"anl"]]},
-  {t:"Tagesgeld + Festgeld + Anleihen-ETF", d:"Flexibel, fest angelegt und Anleihen.",    g:[["Tagesgeld",40,"tg"],["Festgeld",20,"tg"],["Anleihen-ETF",40,"anl"]]},
-  {t:"Leer",                   d:"Ohne Vorgabe – Bausteine selbst anlegen.",             g:[["",100,"tg"]]},
+  {t:"Nur Konto",              d:"Tagesgeld o. Ä. – die ganze Sparrate geht aufs Konto.", g:[["Tagesgeld",100]]},
+  {t:"Konto + Anleihen-ETF",   d:"Je zur Hälfte Konto und Anleihen-ETF.",                g:[["Tagesgeld",50],["Anleihen-ETF",50]]},
+  {t:"Tagesgeld + Festgeld + Anleihen-ETF", d:"Flexibel, fest angelegt und Anleihen.",    g:[["Tagesgeld",40],["Festgeld",20],["Anleihen-ETF",40]]},
+  {t:"Leer",                   d:"Ohne Vorgabe – Bausteine selbst anlegen.",             g:[["",100]]},
 ];
 function renderSafeSetup(){
   const on = X.sg.length === 0;
@@ -1088,19 +1084,19 @@ function renderSafeSetup(){
 }
 function applySafeTemplate(i){
   const T = SAFE_TPL[i], stamp = Date.now().toString(36);
-  X.sg = T.g.map(([name,ziel,art],k)=>({key:`S${k}${stamp}`, name, ziel, locked:false,
-    pos:[{name, wkn:"", art, saldo:0, zins:0, spar:true}]}));
+  X.sg = T.g.map(([name,ziel],k)=>({key:`S${k}${stamp}`, name, ziel, locked:false,
+    pos:[{name, wkn:"", saldo:0, zins:0, spar:true}]}));
   buildSafe(); touch(); renderAll();
   document.querySelector(`[data-s="${T.g[0][0] ? "wkn" : "gname"}"][data-g="0"]`)?.focus();
 }
 document.addEventListener("click", ev=>{ const b = ev.target.closest("[data-stpl]"); if (b) applySafeTemplate(+b.dataset.stpl); });
 const BUILD = {etfs:()=>buildEtfs(), stocks:()=>buildStocks(), safe:()=>buildSafe()};
+X.sg.forEach(g=>g.pos.forEach(q=>{ if (q.art==="anl") q.zins = 0; delete q.art; }));   // „Art“ entfällt: Zins leer = kein Zins
 buildEtfs(); buildStocks(); buildSafe();
 if (X.mixZiel === undefined) X.mixZiel = 60;
 if (X.mixMax  === undefined) X.mixMax  = 70;
 $("mixZiel").value = X.mixZiel; $("mixMax").value = X.mixMax;
 X.safePlan = Object.assign({gesamt:0, min:0, band:5, fine:false}, X.safePlan||{});
-X.sg.forEach(g=>g.pos.forEach(q=>{ if (q.art!=="anl") q.art="tg"; }));
 $("spFrei").value = X.safeFrei || "";
 $("spG").value = X.safePlan.gesamt || ""; $("spMin").value = X.safePlan.min;
 $("spBand").value = X.safePlan.band; $("spFine").checked = !!X.safePlan.fine;
@@ -1187,32 +1183,32 @@ let SAFE_ALLOC = null;      // Sparrate je Position [Baustein][Position] (für C
 function renderSafe(){
   renderSafeSetup();
   const G = X.sg, P = X.safePlan, rate = P.gesamt, band = P.band/100, m = Math.round(P.min);
-  const POS = []; G.forEach((g,gi)=>g.pos.forEach((q,pi)=>POS.push({gi, pi, q, saldo:+q.saldo||0, zins: q.art==="anl" ? 0 : (+q.zins||0)})));
+  const POS = []; G.forEach((g,gi)=>g.pos.forEach((q,pi)=>POS.push({gi, pi, q, saldo:+q.saldo||0, zins:+q.zins||0})));
   const vals = G.map(g=>g.pos.reduce((a,q)=>a+(+q.saldo||0),0));
   const tot = vals.reduce((a,b)=>a+b,0);
-  const totTg = POS.filter(o=>o.q.art!=="anl").reduce((a,o)=>a+o.saldo,0);
+  const totTg = POS.filter(o=>o.zins>0).reduce((a,o)=>a+o.saldo,0);     // verzinste Positionen
   const zj  = POS.reduce((a,o)=>a+o.saldo*o.zins/100,0);
   const tax = 0.26375;   // Abgeltungsteuer 25 % + Soli, ohne Kirchensteuer
   const frei = X.safeFrei || 0, zSt = Math.max(0, zj - frei), zNetto = zj - zSt*tax;   // Steuer nur über dem Freibetrag
-  const avg = totTg ? zj/totTg*100 : 0;     // Ø-Zins nur über die Konten
-  POS.forEach(o=>{ const el=$(`psum-${o.gi}-${o.pi}`); if(el) el.textContent = o.q.art!=="anl" && o.saldo&&o.zins ? `Zinsen ca. ${eur2(o.saldo*o.zins/100)} / Jahr` : ""; });
+  const avg = totTg ? zj/totTg*100 : 0;     // Ø-Zins nur über die verzinsten Positionen
+  POS.forEach(o=>{ const el=$(`psum-${o.gi}-${o.pi}`); if(el) el.textContent = o.saldo&&o.zins ? `Zinsen ca. ${eur2(o.saldo*o.zins/100)} / Jahr` : ""; });
   G.forEach((g,gi)=>{ const el=$("ssum-"+gi); if (el) el.textContent = "Summe " + eur(vals[gi]); });
 
   const pcol = o => SCOL(o.gi);
   bar("barSafe", POS.map(o=>({l:`${G[o.gi].name} – ${posName(o.q,o.pi)}`, v:o.saldo, c:pcol(o)})));
-  $("safeTable").innerHTML = `<thead><tr><th>Position</th><th style="text-align:left">Baustein</th><th style="text-align:left">Art</th><th>Wert</th><th>Anteil</th><th>Zins</th><th>Zinsen / Jahr</th><th>Zinsen / Monat</th><th>bespart</th></tr></thead><tbody>` +
+  $("safeTable").innerHTML = `<thead><tr><th>Position</th><th style="text-align:left">Baustein</th><th>Wert</th><th>Anteil</th><th>Zins</th><th>Zinsen / Jahr</th><th>Zinsen / Monat</th><th>bespart</th></tr></thead><tbody>` +
     POS.map(o=>{ const z=o.saldo*o.zins/100; return `<tr><td><span class="dot" style="background:${pcol(o)}"></span>${posLabel(o.q,o.pi)}</td>
-      <td style="text-align:left">${esc(G[o.gi].name)}</td><td style="text-align:left">${ARTL[o.q.art]}</td>
+      <td style="text-align:left">${esc(G[o.gi].name)}</td>
       <td>${eur(o.saldo)}</td><td>${tot?pct(o.saldo/tot*100,1):"–"}</td>
-      ${o.q.art==="anl" ? `<td>–</td><td>–</td><td>–</td>` : `<td>${pct(o.zins)}</td><td>${eur2(z)}</td><td>${eur2(z/12)}</td>`}<td>${o.q.spar?"✅ ja":"– nein"}</td></tr>`; }).join("") +
-    `</tbody><tfoot><tr><td>Gesamt</td><td></td><td></td><td>${eur(tot)}</td><td>${tot?pct(100,1):"–"}</td><td>${totTg?"Ø "+pct(avg):"–"}</td>
+      ${!o.zins ? `<td>–</td><td>–</td><td>–</td>` : `<td>${pct(o.zins)}</td><td>${eur2(z)}</td><td>${eur2(z/12)}</td>`}<td>${o.q.spar?"✅ ja":"– nein"}</td></tr>`; }).join("") +
+    `</tbody><tfoot><tr><td>Gesamt</td><td></td><td>${eur(tot)}</td><td>${tot?pct(100,1):"–"}</td><td>${totTg?"Ø "+pct(avg):"–"}</td>
       <td>${eur2(zj)}</td><td>${eur2(zj/12)}</td><td></td></tr></tfoot>`;
 
   // 12-Monats-Ausblick: monatliche Verzinsung mit Ø-Zins, Sparrate gesamt am Monatsende, Zins konstant, vor Steuern
   const r = avg/100/12; let fvTg = totTg; for (let k=0; k<12; k++) fvTg = fvTg*(1+r);
   const fv = fvTg + (tot - totTg) + 12*rate;
   $("safenote").innerHTML = tot||rate ? `Zinsen pro Jahr: <strong>${eur2(zj)}</strong> brutto · <strong>${eur2(zNetto)}</strong> nach Steuer (Abgeltungsteuer + Soli, 26,375 %, ohne Kirchensteuer, ${frei ? `Freibetrag ${eur(frei)}` : "ohne Freibetrag"}).<br>
-    In 12 Monaten ca. <strong>${eur(fv)}</strong> (Konten mit Ø-Zins verzinst, ETFs / Fonds ohne Kursentwicklung, plus 12 × Sparrate, vor Steuern).` : "";
+    In 12 Monaten ca. <strong>${eur(fv)}</strong> (Positionen mit Zins mit Ø-Zins verzinst, übrige ohne Kursentwicklung, plus 12 × Sparrate, vor Steuern).` : "";
 
   // Ist-Verteilung je Baustein + Rebalancing über die Sparrate
   const zs = G.map(g=>+g.ziel||0), zSum = zs.reduce((a,b)=>a+b,0), tg = zs.map(z=>z/100);
@@ -1643,8 +1639,8 @@ $("expCsv").addEventListener("click", ()=>{
     n(+e.wert||0), cT?n((+e.wert||0)/cT*100):"", "", n(CORE.etfAlloc ? CORE.etfAlloc[i][j] : 0)])));
   // Risikoarm
   const sT = X.sg.reduce((a,g)=>a+g.pos.reduce((x,q)=>x+(+q.saldo||0),0),0);
-  X.sg.forEach((g,gi)=>g.pos.forEach((q,pi)=>rows.push([safeName(), [g.name, posName(q,pi)].filter(Boolean).join(" – "), q.wkn||"", ARTL[q.art],
-    n(+q.saldo||0), sT?n((+q.saldo||0)/sT*100):"", q.art==="anl"?"":n(q.zins), n(SAFE_ALLOC ? SAFE_ALLOC[gi][pi] : 0)])));
+  X.sg.forEach((g,gi)=>g.pos.forEach((q,pi)=>rows.push([safeName(), [g.name, posName(q,pi)].filter(Boolean).join(" – "), q.wkn||"", "",
+    n(+q.saldo||0), sT?n((+q.saldo||0)/sT*100):"", q.zins?n(q.zins):"", n(SAFE_ALLOC ? SAFE_ALLOC[gi][pi] : 0)])));
   // Spielgeld ETFs
   const eT = X.etfs.reduce((a,e)=>a+e.comd+e.scal,0);
   X.etfs.forEach((e,i)=>{
