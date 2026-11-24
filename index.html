@@ -153,6 +153,13 @@
   @media print{ .tabhead{display:none} }
   #tab-vorsorge.setup > .tabhead{display:none}
   #tab-av.leer .av-hide{display:none}
+  .zv-head{display:flex;justify-content:space-between;align-items:center;gap:10px}
+  .zv-head h2{margin:0}
+  .zv-edit{display:none} .zv-card.editing .zv-view{display:none} .zv-card.editing .zv-edit{display:block}
+  .zv-view .bar{margin-top:12px}
+  .zv-row{display:flex;align-items:flex-end;gap:10px;margin-top:12px}
+  .zv-row > div{flex:1}
+  .zv-rest{margin:0 0 12px;white-space:nowrap}
   #tab-safe.setup > section:not(#safeSetup), #tab-safe.setup > #safeNote, #tab-safe.setup > .tabhead{display:none !important}
   .stbox{display:block;border:1px solid;border-radius:8px;padding:10px 12px;color:var(--text);font-weight:400}
   .stbox.ok{background:var(--okbg);border-color:var(--okline)}
@@ -412,6 +419,18 @@
     <section class="card av-hide">
       <div class="kpis" id="avKpis"></div>
     </section>
+    <section class="card zv-card" id="avZiel">
+      <div class="zv-head"><h2>Zielverteilung</h2>
+        <button class="ico" id="avZielEdit" title="Ziel bearbeiten" aria-label="Ziel bearbeiten">✎</button></div>
+      <div class="zv-view"><div class="bar" id="barAvZiel"></div><p class="note" id="avZielTxt"></p></div>
+      <div class="zv-edit">
+        <div class="zv-row">
+          <div><label for="mixZiel" id="lblMixZiel">Ziel (%)</label><input type="number" inputmode="decimal" id="mixZiel" min="0" max="100" step="1" placeholder="z. B. 60"></div>
+          <p class="zv-rest" id="avZielRest"></p>
+          <button class="ico okb" id="avZielOk" title="Bestätigen (Enter)" aria-label="Bestätigen" style="margin-bottom:12px">✓</button>
+        </div>
+      </div>
+    </section>
     <section class="card av-hide">
       <h2>Ist-Verteilung Vermögen</h2>
       <div class="bar" id="barMix"></div>
@@ -421,7 +440,7 @@
       <h2>Sparplan</h2>
       <div class="row">
         <div><label for="avRate" id="lblAvRate">Sparrate gesamt (€/Monat)</label><input type="number" inputmode="decimal" id="avRate" min="0" step="1" placeholder="0"></div>
-        <div><label for="mixZiel" id="lblMixZiel">Ziel (%)</label><input type="number" inputmode="decimal" id="mixZiel" min="0" max="100" step="1" placeholder="z. B. 60"></div>
+        <div><label for="avMin">Mindestrate je Baustein (€)</label><input type="number" inputmode="decimal" id="avMin" min="0" step="1" value="0"></div>
         <div><label for="mixBand">Toleranzband (± Prozentpunkte)</label><input type="number" inputmode="decimal" id="mixBand" min="0" step="0.5" value="5"></div>
       </div>
       <p class="note" id="avRateNote"></p>
@@ -956,6 +975,16 @@ document.addEventListener("click", ev=>{
   else if (ev.target.closest("#athOk")) avHeadEdit(false);
 });
 document.addEventListener("keydown", ev=>{ if (ev.key==="Enter" && (ev.target.id==="avT1"||ev.target.id==="avT2")){ ev.preventDefault(); avHeadEdit(false); } });
+function avZielEdit(on){
+  if (!on && $("mixZiel").value.trim()===""){ $("mixZiel").focus(); return; }   // ohne Ziel nicht schließen
+  $("avZiel").classList.toggle("editing", on);
+  if (on) $("mixZiel").focus(); else { touch(); renderAll(); }
+}
+document.addEventListener("click", ev=>{
+  if (ev.target.closest("#avZielEdit")) avZielEdit(true);
+  else if (ev.target.closest("#avZielOk")) avZielEdit(false);
+});
+document.addEventListener("keydown", ev=>{ if (ev.key==="Enter" && ev.target.id==="mixZiel"){ ev.preventDefault(); avZielEdit(false); } });
 function safeHeadEdit(on){
   if (!on && !$("safeT2").value.trim() && !$("safeT1").value.trim()){ $("safeT2").focus(); return; }
   $("safeHead").classList.toggle("editing", on);
@@ -1136,13 +1165,14 @@ if (X.mixBand === undefined){
 }
 delete X.mixMax;
 X.mixFine = !!X.mixFine;
+X.avMin = Math.max(0, +X.avMin || 0); $("avMin").value = X.avMin;
 $("mixZiel").value = X.mixZiel ?? ""; $("mixBand").value = X.mixBand; $("mixFine").checked = X.mixFine;
 X.safePlan = Object.assign({gesamt:0, min:0, band:5, fine:false}, X.safePlan||{});
 $("spFrei").value = X.safeFrei || "";
 $("spG").value = X.safePlan.gesamt || ""; $("spMin").value = X.safePlan.min;
 $("spBand").value = X.safePlan.band; $("spFine").checked = !!X.safePlan.fine;
 $("avReb").checked = !!X.avReb;
-delete X.avMinArm;   // eigenes Feld „Mindestrate risikoarm“ entfallen – es gelten die Mindestraten aus Reiter 1/2
+delete X.avMinArm;   // altes Feld „Mindestrate risikoarm“ – ersetzt durch X.avMin (Mindestrate je Baustein)
 $("avRate").value = X.avRate || "";
 $("cap").value = X.cap;
 if (X.capEtf === undefined) X.capEtf = 10;
@@ -1152,6 +1182,7 @@ function renderExtra(){
   X.cap = num("cap");
   X.capEtf = num("capEtf");
   X.mixZiel = $("mixZiel").value.trim()==="" ? null : Math.min(100, Math.max(0, num("mixZiel")));
+  X.avMin = Math.max(0, Math.round(num("avMin")));
   X.mixBand = Math.max(0, num("mixBand")); X.mixFine = $("mixFine").checked;
   X.safePlan = {gesamt:Math.max(0,num("spG")), min:Math.max(0,num("spMin")),
                 band:Math.max(0,num("spBand")), fine:$("spFine").checked};
@@ -1362,9 +1393,14 @@ function renderAll(){
   const vermOk = vorsorge && inCorr(rIst);
   const nA = `„${esc(coreShort())}“`, nB = `„${esc(safeShort())}“`;   // aktuelle Namen aus Reiter 1 und 2
   $("avIntro").innerHTML = `${nA} und ${nB} zusammen. ` +
-    (hasZ ? `Ziel ${p0(zZ)} ${nA} ${bandTxt} (${p0(zLo)} – ${p0(zHi)}).` : `Ziel für ${nA} unten im Sparplan festlegen.`) +
+    (hasZ ? `Ziel ${p0(zZ)} ${nA} ${bandTxt} (${p0(zLo)} – ${p0(zHi)}).` : `Ziel für ${nA} oben in der Zielverteilung festlegen.`) +
     ` Das Rebalancing der Gesamtsparrate ist optional und ändert erst etwas, wenn du den Vorschlag übernimmst.`;
   $("lblMixZiel").innerHTML = `Ziel ${nA} (%)`;
+  // Karte Zielverteilung: Ansicht (Balken + Text) / Bearbeiten (nur Anteil Teil 1, Rest automatisch)
+  bar("barAvZiel", hasZ ? [{l:esc(coreShort()), v:zZ, c:"var(--c1)"}, {l:esc(safeShort()), v:1-zZ, c:"var(--c5)"}] : []);
+  $("avZielTxt").innerHTML = hasZ ? `Toleranzband ${bandTxt}: ${nA} darf zwischen ${p0(zLo)} und ${p0(zHi)} liegen.` : `Noch kein Ziel festgelegt – mit ✎ eintragen.`;
+  $("avZielRest").innerHTML = `${nB}: ${hasZ ? p0(1-zZ) : "–"}`;
+  if (!hasZ && !document.activeElement?.closest?.("#avZiel")) $("avZiel").classList.add("editing");
   $("lblAvRate").innerHTML = `Sparrate gesamt „${esc(avShort())}“ (€/Monat)`;
   $("avRebTxt").innerHTML = `Rebalancing: Gesamtsparrate auf ${nA} / ${nB} aufteilen`;
   $("avApplyNote").innerHTML = `Übernehmen trägt die beiden Beträge als „Sparrate gesamt“ in ${nA} und ${nB} ein – dort wird dann wie gewohnt innerhalb des Teils aufgeteilt.`;
@@ -1413,7 +1449,7 @@ function renderAll(){
       rateMix.map(m=>`<tr><td><span class="dot" style="background:${m.c}"></span>${m.l}</td>
         <td>${eur(m.v)}</td><td>${eur(m.v*12)}</td><td>${rTot?pct(m.v/rTot*100,1):"–"}</td></tr>`).join("") +
       `</tbody><tfoot><tr><td>Gesamt</td><td>${eur(rTot)}</td><td>${eur(rTot*12)}</td><td>${rTot?pct(100,1):"–"}</td></tr></tfoot>`;
-    fz = `ℹ️ <strong>${esc(avShort())} gesamt:</strong> Noch kein Ziel festgelegt. Trag im Sparplan oben ein, welchen Anteil ${nA} haben soll – der Rest ist ${nB}. Danach zeigt dieser Teil Abweichung, Band und auf Wunsch einen Vorschlag für die Sparraten.`;
+    fz = `ℹ️ <strong>${esc(avShort())} gesamt:</strong> Noch kein Ziel festgelegt. Trag oben in der Zielverteilung ein, welchen Anteil ${nA} haben soll – der Rest ist ${nB}. Danach zeigt dieser Teil Abweichung, Band und auf Wunsch einen Vorschlag für die Sparraten.`;
   } else if (!X.avReb){
     bar("barRateMix", rateMix);
     $("rateMixTable").innerHTML = `<thead><tr><th>Teil</th><th>€ / Monat</th><th>€ / Jahr</th><th>Ist %</th><th>Ziel %</th><th>Band</th></tr></thead><tbody>` +
@@ -1425,14 +1461,14 @@ function renderAll(){
     else { const ok = (!vorsorge || vermOk) && rateOk;
       fz = `${ok?"✅":"⚠️"} ${AVL} ${vermTxt} Sparraten bei ${pct(rShare*100,1)} ${nA} – ${rateOk?"im Band":"außerhalb des Bands"}. ${ok?"Sparplan so lassen.":"Rebalancing oben aktivieren, um einen Vorschlag zu sehen."}`; }
   } else {
-    const minsAV = [CS.groups.length*Math.round(num("min")), X.sg.length*Math.round(X.safePlan.min||0)];
+    const minsAV = [X.avMin||0, X.avMin||0];                       // Mindestrate je Baustein aus diesem Reiter (nur für den Vorschlag)
     const okAV = v => { const T=v[0]+v[1]; return T>0 && inCorr(v[0]/T); };
     const tgAV = [zZ, 1-zZ];
     const stepAV = v => { const T=v[0]+v[1], r=T? v[0]/T : zZ;     // wie Reiter 1: im Band nach Ziel (oder Feinausgleich), sonst Lücke zum Ziel füllen
       return T>0 && (!inCorr(r) || X.mixFine) ? gRebal(v, tgAV, S_AV, minsAV) : gStd(tgAV, S_AV, minsAV); };
     const valsAV = [CORE.total, sf.total];
     if (!S_AV){ fz = `<span class="empty">Sparrate gesamt eintragen.</span>`; $("rateMixTable").innerHTML=""; bar("barRateMix",[]); }
-    else if (S_AV < minsAV[0]+minsAV[1]){ fz = `<span class="err">Sparrate (${eur(S_AV)}) reicht nicht für die Mindestraten (${eur(minsAV[0])} ${nA}, ${eur(minsAV[1])} ${nB}).</span>`; $("rateMixTable").innerHTML=""; bar("barRateMix",[]); }
+    else if (S_AV < minsAV[0]+minsAV[1]){ fz = `<span class="err">Sparrate (${eur(S_AV)}) reicht nicht für 2 × Mindestrate (${eur(minsAV[0]+minsAV[1])}).</span>`; $("rateMixTable").innerHTML=""; bar("barRateMix",[]); }
     else {
       const a = roundTo(stepAV(valsAV), S_AV); AV_SUGGEST = a;
       bar("barRateMix", rateMix.map((m,i)=>({...m, v:a[i]})));
@@ -1460,7 +1496,7 @@ function renderAll(){
   if (avLeer) fz = `ℹ️ <strong>${esc(avShort())}:</strong> Noch keine Werte und Sparraten. Trag sie zuerst in ` +
     `<a href="#" class="goto" data-goto="vorsorge">${nA}</a> und <a href="#" class="goto" data-goto="safe">${nB}</a> ein – ` +
     `hier siehst du dann, wie sich beide zueinander verhalten, und bekommst auf Wunsch einen Vorschlag für die Sparraten.` +
-    (hasZ ? "" : ` Das Ziel für ${nA} kannst du schon jetzt im Sparplan oben festlegen.`);
+    (hasZ ? "" : ` Das Ziel für ${nA} kannst du schon jetzt oben in der Zielverteilung festlegen.`);
   $("mixnote").innerHTML = note;
   $("avFazit").innerHTML = fz;
   const U = X.avUndo;

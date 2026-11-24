@@ -120,9 +120,15 @@ Reiter 2–6 speichern unter `depot-rechner-extra-v1` (Objekt `X`).
   Mindestraten aus Reiter 1/2. Text unter „Sparrate – Aufteilung“ wie Reiter 1/2 (Standardaufteilung / Zurück im
   Band nach … / Auf Ziel nach …). Begriff einheitlich „Band“ statt „Korridor“.
   Ist-Verteilung mit Spalte „Status“ (✅ im Band / ⚠️ außerhalb) wie Reiter 1/2; Feinausgleich-Checkbox immer sichtbar.
+- **Zielverteilung + Mindestrate (fertig):** Karte „Zielverteilung“ (`#avZiel`, unter den Kennzahlen) mit ✎/✓:
+  Balken + Toleranzband-Text; Bearbeiten nur Anteil Reiter 1 (`mixZiel`), Rest automatisch. Ohne Ziel sofort offen.
+  Sparplan: Sparrate gesamt, **Mindestrate je Baustein** `X.avMin` (Start 0 €; zählt **nur für den Vorschlag**,
+  Mindestraten aus Reiter 1/2 werden hier nicht berücksichtigt), Toleranzband, Feinausgleich.
 - **D (fertig):** Noch keine Werte und Sparraten in Reiter 1/2 → Klasse `#tab-av.leer` blendet Kennzahlen,
   Ist-Verteilung und Sparrate-Aufteilung (`.av-hide`) aus; Fazit zeigt ℹ️-Hinweis mit Links zu Reiter 1/2.
 
 ## Nächster Schritt
-Reiter 4 „Spielgeld ETFs“ analysieren (z. B. feste Broker-Spalten comdirect/Scalable, „Spielgeld ETFs (Scalable)“
-in Reiter 6) – Vorschläge machen, dann schrittweise umsetzen. Offen (klein): „-0,00“ / „-0 €“ bei exakt 0 Abweichung.
+Karte „Zielverteilung“ oben auch in Reiter 2 und Reiter 1 (gleiches Muster wie Reiter 3; Ziel nur noch dort
+eingeben, in den Baustein-Karten nur Anzeige). In Reiter 1 die Warnkarte „Als neues Ziel festlegen / Auf festgelegtes
+Ziel zurücksetzen“ **behalten** (Wunsch Nutzerin/Nutzer). Danach Reiter 4 „Spielgeld ETFs“ analysieren
+(feste Broker-Spalten comdirect/Scalable, „Spielgeld ETFs (Scalable)“ in Reiter 6). Offen (klein): „-0,00“ / „-0 €“.
