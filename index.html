@@ -330,7 +330,7 @@
       <p class="note" id="dauer"></p>
     </section>
     <section class="card"><p class="fazit" id="fazit"></p></section>
-    <div class="tabreset"><button type="button" id="resetCore">Reiter zurücksetzen …</button></div>
+    <div class="tabreset"><button type="button" id="resetCore">Zurücksetzen …</button></div>
   </section>
 
   <!-- ============ VORSORGE RISIKOARM ============ -->
@@ -602,7 +602,7 @@ const coreLabel = () => `${esc(coreShort())} (${CS.groups.map(g=>+g.ziel||0).joi
 function renderTabName(){
   $("th1").textContent = (CS.tab.t1||"").trim(); $("th2").textContent = coreShort();
   const n = $("navCore"); n.innerHTML = `<span class="t1">${esc((CS.tab.t1||"").trim()) || "&nbsp;"}</span>${esc(coreShort())}`;
-  $("resetCore").textContent = `Reiter „${coreName()}“ zurücksetzen …`;
+  $("resetCore").textContent = `„${coreName()}“ zurücksetzen …`;
   $("tab-vorsorge").dataset.title = coreName(); if (!document.body.classList.contains("pdf-mode")) $("pdfCore").textContent = coreName();
 }
 const typLabel  = t => t==="dist" ? "Ausschütter" : t==="acc" ? "Thesaurierer" : "";
@@ -1409,7 +1409,7 @@ window.caches?.keys?.().then(k=>{ const v = k.filter(n=>n.startsWith("depot-")).
 
 /* ---------- Einzelnen Reiter zurücksetzen ---------- */
 $("resetCore").addEventListener("click", ()=>{
-  if (!confirm(`Reiter „${coreName()}“ zurücksetzen?\n\nAlle Bausteine, ETFs, Werte, Sparrate und der Reitername werden gelöscht – danach startet der Reiter wieder mit der Vorlagenauswahl. Die anderen Reiter bleiben unverändert.\n\nTipp: Vorher im Reiter Info eine Sicherung exportieren.`)) return;
+  if (!confirm(`„${coreName()}“ zurücksetzen?\n\nAlle Bausteine, ETFs, Werte, die Sparrate und der Name werden gelöscht – danach startet „${coreName()}“ wieder mit der Vorlagenauswahl. Alles andere bleibt unverändert.\n\nTipp: Vorher unter Info eine Sicherung exportieren.`)) return;
   try { localStorage.removeItem(STORE); } catch(e){}
   touch(); save(XSTORE, X);
   location.reload();

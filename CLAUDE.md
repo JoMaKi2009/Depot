@@ -69,6 +69,8 @@ Reiter 2–6 speichern unter `depot-rechner-extra-v1` (Objekt `X`).
 ## Arbeitsweise mit der Nutzerin / dem Nutzer
 - Erst **Vorschläge** machen (was ist fest eingebaut, wie generischer), dann nach Freigabe
   **Schritt für Schritt** umsetzen.
+- **Vor jeder Änderung fragen**: nichts umsetzen, committen oder pushen ohne ausdrückliche Freigabe.
+  Übernahme nach `main` nur nach eigener, ausdrücklicher Freigabe.
 - Nach jedem Schritt: kurze Rückmeldung mit Screenshot (Handy-Viewport) und Ankündigung des nächsten Schritts.
 - Vor dem Pushen Bescheid geben; nach dem Push daran erinnern, in der App „Aktualisieren“ zu tippen.
 
