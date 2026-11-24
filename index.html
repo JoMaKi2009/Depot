@@ -207,7 +207,7 @@
   @media (display-mode: standalone){ body{-webkit-user-select:none;user-select:none} input,textarea{-webkit-user-select:text;user-select:text} }
   .tabreset{text-align:center;margin:24px 0 8px}
   .tabreset button{background:none;border:0;padding:10px;font:inherit;font-size:13px;color:var(--muted);text-decoration:underline;cursor:pointer}
-  #tab-vorsorge.setup > .tabreset{display:none}
+  #tab-vorsorge.setup > .tabreset, #tab-safe.setup > .tabreset{display:none}
   #tab-daten .acts{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
   #tab-daten .acts .btn{margin:0}
   #tab-daten p{margin:0 0 8px;font-size:14px;line-height:1.5}
@@ -391,6 +391,7 @@
       <p class="note" id="spDauer"></p>
     </section>
     <section class="card"><p class="fazit" id="spFazit"></p></section>
+    <div class="tabreset"><button type="button" data-treset="safe" id="resetSafe">Zurücksetzen …</button></div>
   </section>
 
   <!-- ============ ÜBERSICHT ALTERSVORSORGE ============ -->
@@ -452,6 +453,7 @@
       </div>
       <p class="note" id="capnoteEtf"></p>
     </section>
+    <div class="tabreset"><button type="button" data-treset="etfs" id="resetEtfs">„Spielgeld ETFs“ zurücksetzen …</button></div>
   </section>
 
   <!-- ============ SPIELGELD AKTIEN ============ -->
@@ -472,6 +474,7 @@
       </div>
       <p class="note" id="capnote"></p>
     </section>
+    <div class="tabreset"><button type="button" data-treset="stocks" id="resetStocks">„Spielgeld Aktien“ zurücksetzen …</button></div>
   </section>
 
   <!-- ============ GESAMT ============ -->
@@ -909,6 +912,7 @@ const safeShort = () => (X.safeTab.t2||"").trim() || (X.safeTab.t1||"").trim() |
 function renderSafeName(){
   $("sth1").textContent = (X.safeTab.t1||"").trim(); $("sth2").textContent = safeShort();
   $("navSafe").innerHTML = `<span class="t1">${esc((X.safeTab.t1||"").trim()) || "&nbsp;"}</span>${esc(safeShort())}`;
+  $("resetSafe").textContent = `„${safeName()}“ zurücksetzen …`;
   $("tab-safe").dataset.title = safeName(); if (!document.body.classList.contains("pdf-mode")) $("pdfSafe").textContent = safeName();
 }
 $("safeT1").value = X.safeTab.t1 || ""; $("safeT2").value = X.safeTab.t2 || "";
@@ -1026,6 +1030,8 @@ function renderExtra(){
   X.avMinArm = Math.max(0, num("avMinArm"));
   X.avRate = Math.max(0, Math.round(num("avRate")));
   X.safeFrei = Math.max(0, num("spFrei"));
+  $("resetEtfs").parentNode.style.display = X.etfs.length ? "" : "none";
+  $("resetStocks").parentNode.style.display = X.stocks.length ? "" : "none";
   X.safeTab = {t1:$("safeT1").value, t2:$("safeT2").value}; renderSafeName();
   save(XSTORE, X);
 
@@ -1508,6 +1514,20 @@ $("resetCore").addEventListener("click", ()=>{
   if (!confirm(`„${coreName()}“ zurücksetzen?\n\nAlle Bausteine, ETFs, Werte, die Sparrate und der Name werden gelöscht – danach startet „${coreName()}“ wieder mit der Vorlagenauswahl. Alles andere bleibt unverändert.\n\nTipp: Vorher unter Info eine Sicherung exportieren.`)) return;
   try { localStorage.removeItem(STORE); } catch(e){}
   touch(); save(XSTORE, X);
+  location.reload();
+});
+
+const TAB_RESET = {
+  safe:   {name:()=>safeName(), what:n=>`Alle Positionen, Werte, die Sparrate, das Ziel, der Freibetrag und der Name werden gelöscht – danach startet „${n}“ wieder mit der Vorlagenauswahl.`,
+           run:()=>{ X.safe = []; X.safePlan = {gesamt:0, ziel:50, min:0, band:5, fine:false}; X.safeTab = {t1:"Sparplan", t2:"Sicherheitsbaustein"}; X.safeFrei = 0; }},
+  etfs:   {name:()=>"Spielgeld ETFs",   what:()=>"Alle ETFs und ihre Werte werden gelöscht. Der Grenzwert für den Hinweis bleibt erhalten.", run:()=>{ X.etfs = []; }},
+  stocks: {name:()=>"Spielgeld Aktien", what:()=>"Alle Aktien und ihre Werte werden gelöscht. Der Grenzwert für den Hinweis bleibt erhalten.", run:()=>{ X.stocks = []; }},
+};
+document.addEventListener("click", ev=>{
+  const b = ev.target.closest("[data-treset]"); if (!b) return;
+  const R = TAB_RESET[b.dataset.treset], n = R.name();
+  if (!confirm(`„${n}“ zurücksetzen?\n\n${R.what(n)} Alles andere bleibt unverändert.\n\nTipp: Vorher unter Info eine Sicherung exportieren.`)) return;
+  R.run(); touch(); save(XSTORE, X);
   location.reload();
 });
 
