@@ -66,9 +66,9 @@
   .ehead{display:flex;gap:8px;align-items:flex-start}
   .ehead .dot{margin:12px 0 0}
   .efields{flex:1;min-width:0}
-  label.inl{display:grid;grid-template-columns:64px 1fr;align-items:center;gap:6px;margin:0 0 6px;font-size:12px}
+  label.inl{display:grid;grid-template-columns:72px 1fr;align-items:center;gap:6px;margin:0 0 6px;font-size:12px}
   label.inl > input, label.inl > select{margin-top:0;padding:5px 8px}
-  div.inl{display:grid;grid-template-columns:64px 1fr;align-items:baseline;gap:6px;margin:0 0 6px;font-size:12px;color:var(--muted)}
+  div.inl{display:grid;grid-template-columns:72px 1fr;align-items:baseline;gap:6px;margin:0 0 6px;font-size:12px;color:var(--muted)}
   .rov{padding:5px 0;font-size:15px;color:var(--muted);overflow-wrap:anywhere}
   .rov.name{font-weight:600}
   .rov.wkn{text-transform:uppercase;letter-spacing:.03em}
@@ -139,6 +139,29 @@
   .card.st-ok{background:var(--okbg);border-color:var(--okline)}
   .card.st-warn{background:var(--warnbg);border-color:var(--warnline)}
   .card.st-info{background:var(--infobg);border-color:var(--infoline)}
+  .tpls{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px}
+  .tpl{display:flex;flex-direction:column;gap:6px;text-align:left;padding:12px;border:1px solid var(--line);border-radius:10px;
+    background:var(--card);color:var(--text);font:inherit;cursor:pointer}
+  .tpl:hover,.tpl:focus{border-color:var(--accent);outline:none}
+  .tpl .tt{font-weight:700}
+  .tpl .td{font-size:13px;color:var(--muted)}
+  .tpl .bar{height:12px;margin:2px 0 0}
+  #tab-vorsorge.setup > section:not(#setupCard), #tab-vorsorge.setup > #coreNote{display:none !important}
+  .tabhead{margin:0 0 10px}
+  .tabhead .th-view{display:flex;justify-content:space-between;align-items:center;gap:10px}
+  .tabhead .th1{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+  .tabhead .th2{display:block;font-size:19px;font-weight:700;line-height:1.25}
+  .tabhead .th-edit{display:none;gap:8px;align-items:flex-start;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px}
+  .tabhead.editing .th-view{display:none} .tabhead.editing .th-edit{display:flex}
+  body.pdf-mode .tabhead{display:none}
+  @media print{ .tabhead{display:none} }
+  #tab-vorsorge.setup > .tabhead{display:none}
+  .stbox{display:block;border:1px solid;border-radius:8px;padding:10px 12px;color:var(--text);font-weight:400}
+  .stbox.ok{background:var(--okbg);border-color:var(--okline)}
+  .stbox.warn{background:var(--warnbg);border-color:var(--warnline)}
+  .stbox.info{background:var(--infobg);border-color:var(--infoline)}
+  .note.stbox{font-size:14px;margin-top:12px;color:var(--text)}
+  .note.stbox:empty{display:none}
   .big{font-size:20px;font-weight:700}
   .err{color:var(--warn);font-weight:600}
   .note{color:var(--muted);font-size:13px;margin:10px 0 0}
@@ -205,7 +228,7 @@
   </div>
 
   <nav>
-    <button data-tab="vorsorge" class="active"><span class="t1">Altersvorsorge</span>Risikoreich</button>
+    <button data-tab="vorsorge" class="active" id="navCore"><span class="t1">Altersvorsorge</span>Risikoreich</button>
     <button data-tab="safe"><span class="t1">Altersvorsorge</span>Risikoarm</button>
     <button data-tab="av"><span class="t1">Übersicht</span>Altersvorsorge</button>
     <button data-tab="etfs"><span class="t1">Spielgeld</span>ETFs</button>
@@ -215,15 +238,35 @@
 
   <!-- ============ VORSORGE (Logik unverändert) ============ -->
   <section class="tab active" id="tab-vorsorge" data-title="Altersvorsorge – Risikoreich">
-    <div class="pdf-title">Altersvorsorge – Risikoreich</div>
+    <div class="pdf-title" id="pdfCore">Altersvorsorge – Risikoreich</div>
+    <section class="card st-info" id="setupCard" style="display:none">
+      <h2 style="color:var(--text)">Los geht's – wie ist dein Sparplan aufgebaut?</h2>
+      <p class="note" style="margin:0 0 12px;color:var(--text)">Wähl eine Vorlage. Namen, Ziele, ETFs und WKNs kannst du danach jederzeit ändern, Bausteine hinzufügen oder entfernen.</p>
+      <div class="tpls" id="tpls"></div>
+    </section>
+    <div class="tabhead" id="coreHead">
+      <div class="th-view"><div><span class="th1" id="th1"></span><span class="th2" id="th2"></span></div>
+        <button class="ico" id="thEdit" title="Reiter umbenennen" aria-label="Reiter umbenennen">✎</button></div>
+      <div class="th-edit">
+        <div class="efields">
+          <label class="inl">Oberzeile<input type="text" id="tabT1" maxlength="24" placeholder="z. B. Altersvorsorge"></label>
+          <label class="inl">Name<input type="text" id="tabT2" maxlength="24" placeholder="z. B. ETF-Sparplan"></label>
+        </div>
+        <div class="eact"><button class="ico okb" id="thOk" title="Bestätigen (Enter)" aria-label="Bestätigen">✓</button></div>
+      </div>
+    </div>
     <p class="note" style="margin:0 0 14px" id="coreNote"></p>
     <section class="card st-warn" id="zielWarn" style="display:none">
       <p class="fazit" style="margin:0"><span id="zielWarnText"></span></p>
-      <button class="btn sec" id="zielReset" style="margin-top:10px">Auf 50/20/30 zurücksetzen</button>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px">
+        <button class="btn" id="zielSet" style="margin:0">Als neues Ziel festlegen</button>
+        <button class="btn sec" id="zielReset" style="margin:0">Auf festgelegtes Ziel zurücksetzen</button>
+      </div>
     </section>
     <section class="card">
       <h2>Aktuelle Werte (€)</h2>
       <div class="groups" id="groups"></div>
+      <button class="add" id="gadd">+ Baustein hinzufügen</button>
     </section>
     <section class="card">
       <h2>Übersicht Einzel-ETFs</h2>
@@ -238,12 +281,12 @@
     <section class="card">
       <h2>Sparplan</h2>
       <div class="row">
-        <div><label for="rate">Sparrate gesamt (€/Monat)</label><input type="number" inputmode="decimal" id="rate" min="0" step="1" value="1015"></div>
-        <div><label for="min">Mindestrate je Baustein (€)</label><input type="number" inputmode="decimal" id="min" min="1" step="1" value="50"></div>
+        <div><label for="rate">Sparrate gesamt (€/Monat)</label><input type="number" inputmode="decimal" id="rate" min="0" step="1" placeholder="z. B. 500"></div>
+        <div><label for="min">Mindestrate je Baustein (€)</label><input type="number" inputmode="decimal" id="min" min="1" step="1" value="25"></div>
         <div><label for="band">Toleranzband (± Prozentpunkte)</label><input type="number" inputmode="decimal" id="band" min="0" step="0.5" value="5"></div>
       </div>
       <p style="margin:14px 0 0"><label class="check"><input type="checkbox" id="fine"> Auch innerhalb des Bands Richtung Ziel ausgleichen</label></p>
-      <p class="note" id="coreSrc"></p>
+      <p class="note stbox info" id="coreSrc"></p>
     </section>
     <section class="card">
       <h2>Sparrate – Aufteilung</h2>
@@ -282,7 +325,7 @@
         <div><label for="spBand">Toleranzband (± Prozentpunkte)</label><input type="number" inputmode="decimal" id="spBand" min="0" step="0.5" value="5"></div>
       </div>
       <p style="margin:14px 0 0"><label class="check"><input type="checkbox" id="spFine"> Auch innerhalb des Bands Richtung Ziel ausgleichen</label></p>
-      <p class="note" id="spSrc"></p>
+      <p class="note stbox info" id="spSrc"></p>
     </section>
     <section class="card">
       <h2>Sparrate – Aufteilung</h2>
@@ -422,7 +465,7 @@ try { const t=localStorage.getItem("depot-rechner-tab"); if(t) document.querySel
    Bausteine/ETFs/Ziele kommen jetzt aus den gespeicherten Daten.
    ========================================================= */
 const STORE = "depot-rechner-v1";
-const ZIEL_DEF = [50, 20, 30];
+const ZIEL_DEF = [50, 20, 30];          // nur noch für die Übernahme alter Stände
 const CORE_DEF = [
   {key:"W", name:"MSCI World",       ziel:50, etfs:[{name:"", wkn:"ETF018", typ:"dist", wert:0, spar:false, locked:true},
                                                {name:"", wkn:"A2PK5J", typ:"acc",  wert:0,  spar:true,  locked:true}]},
@@ -433,8 +476,12 @@ const CORE_DEF = [
 ];
 function loadCore(){
   const o = load(STORE);
-  const cs = {rate:o.rate ?? 1015, min:o.min ?? 50, band:o.band ?? 5, fine:!!o.fine};
+  const cs = {rate:o.rate ?? 0, min:o.min ?? 25, band:o.band ?? 5, fine:!!o.fine};
+  const isNew = !Array.isArray(o.groups) && !CORE_DEF.some(g=>g.etfs.some(e=>o[e.wkn] !== undefined));
+  cs.tab = o.tab && typeof o.tab==="object" ? o.tab : (isNew ? {t1:"Sparplan", t2:"ETF-Sparplan"} : {t1:"Altersvorsorge", t2:"Risikoreich"});
+  const legacy = CORE_DEF.some(g=>g.etfs.some(e=>o[e.wkn] !== undefined));
   if (Array.isArray(o.groups)) cs.groups = o.groups;
+  else if (!legacy){ cs.groups = []; cs.zielRef = {}; }          // neuer Nutzer: Vorlage wählen
   else {                                   // Übernahme aus Version 1 (feste WKN-Felder)
     cs.groups = JSON.parse(JSON.stringify(CORE_DEF));
     cs.groups.forEach(g=>g.etfs.forEach(e=>{ if (o[e.wkn] !== undefined) e.wert = +o[e.wkn] || 0; }));
@@ -442,47 +489,100 @@ function loadCore(){
   return cs;
 }
 let CS = loadCore();
+if ((!CS.zielRef || typeof CS.zielRef !== "object") && CS.groups.length){        // festgelegtes Ziel: bisher fest 50/20/30
+  CS.zielRef = {};
+  CS.groups.forEach((g,i)=>{ CS.zielRef[g.key] = CS.groups.length===ZIEL_DEF.length ? ZIEL_DEF[i] : (+g.ziel||0); });
+}
+const TEMPLATES = [
+  {t:"1 ETF",       d:"Ein weltweiter ETF – einfach und breit gestreut.", g:[["MSCI World",100]]},
+  {t:"2 Bausteine", d:"Industrieländer und Schwellenländer.",              g:[["MSCI World",70],["Emerging Markets",30]]},
+  {t:"3 Bausteine", d:"Welt, Europa extra gewichtet, Schwellenländer.",    g:[["MSCI World",50],["Europa",20],["Emerging Markets",30]]},
+  {t:"Leer",        d:"Ohne Vorgabe – Bausteine selbst anlegen.",          g:[["",100]]},
+];
+function applyTemplate(i){
+  const T = TEMPLATES[i], stamp = Date.now().toString(36);
+  CS.groups = T.g.map(([name,ziel],k)=>({key:`G${k}${stamp}`, name, ziel, locked:false,
+    etfs:[{depot:"", anbieter:"", wkn:"", typ:"", wert:0, spar:true}]}));
+  CS.zielRef = {}; CS.groups.forEach(g=>CS.zielRef[g.key] = g.ziel);
+  buildCore(); gaddState(); touch(); renderAll();
+  document.querySelector(`[data-c="${T.g[0][0] ? "depot" : "gname"}"][data-g="0"]`)?.focus();
+}
+function renderSetup(){
+  const on = CS.groups.length === 0;
+  $("tab-vorsorge").classList.toggle("setup", on); $("setupCard").style.display = on ? "" : "none";
+  if (on && !$("tpls").children.length)
+    $("tpls").innerHTML = TEMPLATES.map((T,i)=>`<button class="tpl" data-tpl="${i}"><span class="tt">${T.t}</span>
+      <span class="bar">${T.g[0][0] ? T.g.map(([n,z],k)=>`<span style="width:${z}%;background:${PALETTE[k]}"></span>`).join("") : ""}</span>
+      <span class="td">${T.g[0][0] ? T.g.map(([n,z])=>`${n}&nbsp;${z}&nbsp;%`).join(" · ") : "Eigene Aufteilung"}</span><span class="td">${T.d}</span></button>`).join("");
+}
+document.addEventListener("click", ev=>{ const b = ev.target.closest("[data-tpl]"); if (b) applyTemplate(+b.dataset.tpl); });
+function tabHeadEdit(on){
+  if (!on && !$("tabT2").value.trim() && !$("tabT1").value.trim()){ $("tabT2").focus(); return; }
+  $("coreHead").classList.toggle("editing", on);
+  if (on) $("tabT2").focus(); else { touch(); renderAll(); }
+}
+document.addEventListener("click", ev=>{
+  if (ev.target.closest("#thEdit")) tabHeadEdit(true);
+  else if (ev.target.closest("#thOk")) tabHeadEdit(false);
+});
+document.addEventListener("keydown", ev=>{ if (ev.key==="Enter" && (ev.target.id==="tabT1"||ev.target.id==="tabT2")){ ev.preventDefault(); tabHeadEdit(false); } });
+const refOf   = g => CS.zielRef[g.key];                         // undefined = Baustein gehört nicht zum festgelegten Ziel
+const zielChg = g => refOf(g) === undefined || (+g.ziel||0) !== refOf(g);
+const refText = () => Object.keys(CS.zielRef).map(k=>CS.zielRef[k]).join("/");
 CS.groups.forEach(g=>{
   if (g.locked === undefined) g.locked = true;
-  g.etfs.forEach(e=>{ if (e.anbieter === undefined){ e.anbieter = e.name || ""; } delete e.name; delete e.locked; });
+  g.etfs.forEach(e=>{ if (e.anbieter === undefined){ e.anbieter = e.name || ""; } delete e.name; delete e.locked;
+    if (e.depot === undefined){ e.depot = e.anbieter || ""; e.anbieter = ""; } });   // altes Feld „Anbieter“ war die Bank
 });
 const GROUPS = [];                         // wird aus CS befüllt – von den Rebalancing-Funktionen gelesen
 function syncGroups(){ GROUPS.length = 0; CS.groups.forEach(g=>GROUPS.push({key:g.key, name:esc(g.name), ziel:(+g.ziel||0)/100})); }
 syncGroups();
-const coreLabel = () => `Risikoreich (${CS.groups.map(g=>+g.ziel||0).join("/")})`;
-const typLabel  = t => t==="dist" ? "Ausschütter" : "Thesaurierer";
+const coreName  = () => [CS.tab.t1, CS.tab.t2].map(x=>(x||"").trim()).filter(Boolean).join(" – ") || "Sparplan";
+const coreShort = () => (CS.tab.t2||"").trim() || (CS.tab.t1||"").trim() || "Sparplan";
+const coreLabel = () => `${esc(coreShort())} (${CS.groups.map(g=>+g.ziel||0).join("/")})`;
+function renderTabName(){
+  $("th1").textContent = (CS.tab.t1||"").trim(); $("th2").textContent = coreShort();
+  const n = $("navCore"); n.innerHTML = `<span class="t1">${esc((CS.tab.t1||"").trim()) || "&nbsp;"}</span>${esc(coreShort())}`;
+  $("tab-vorsorge").dataset.title = coreName(); if (!document.body.classList.contains("pdf-mode")) $("pdfCore").textContent = coreName();
+}
+const typLabel  = t => t==="dist" ? "Ausschütter" : t==="acc" ? "Thesaurierer" : "";
+const etfSub    = e => [e.depot, e.anbieter].map(x=>esc((x||"").trim())).filter(Boolean).join(" · ");
 
-const CORECOL = ["var(--c2)","var(--c3)","var(--c4)"];   // nur Darstellung
+const PALETTE = ["var(--c2)","var(--c3)","var(--c4)","var(--c5)","var(--c6)","var(--c7)","var(--c1)"];
+const CORECOL = new Proxy([], {get:(t,i)=> typeof i==="string" && /^\d+$/.test(i) ? PALETTE[+i % PALETTE.length] : t[i]});   // nur Darstellung
+const MAXG = 8;
 // Ein Bleistift pro Baustein: Name, Ziel, Anbieter und WKN der ETFs
 function coreEtf(gi, ei, e, n, L){
   const a = `data-g="${gi}" data-e="${ei}"`;
   const head = L
-    ? `<div class="inl"><span>Anbieter</span><span class="rov">${esc(e.anbieter)||"–"}</span></div>
+    ? `<div class="inl"><span>Depot</span><span class="rov">${esc(e.depot)||"–"}</span></div>
+       <div class="inl"><span>Anbieter</span><span class="rov">${esc(e.anbieter)||"–"}</span></div>
        <div class="inl"><span>WKN</span><span class="rov wkn">${esc(e.wkn)||"–"}</span></div>`
     : `<div class="ehead"><div class="efields">
-         <label class="inl">Anbieter<input type="text" data-c="anbieter" ${a} value="${esc(e.anbieter)}" placeholder="z. B. comdirect"></label>
+         <label class="inl">Depot<input type="text" data-c="depot" ${a} value="${esc(e.depot)}" placeholder="Bank, z. B. comdirect"></label>
+         <label class="inl">Anbieter<input type="text" data-c="anbieter" ${a} value="${esc(e.anbieter)}" placeholder="ETF-Anbieter, z. B. iShares"></label>
          <label class="inl">WKN<input type="text" class="wkn" data-c="wkn" ${a} value="${esc(e.wkn)}" placeholder="WKN" maxlength="12"></label>
        </div>${n>1?`<div class="eact"><button class="del" data-cdel="${gi}:${ei}" title="ETF entfernen" aria-label="ETF entfernen">×</button></div>`:""}</div>`;
   return `<div class="cetf${e.spar?" sp":""}">
     ${head}
-    ${L ? `<div class="inl"><span>Typ</span><span class="rov">${typLabel(e.typ)}</span></div>`
-        : `<label class="inl">Typ<select data-c="typ" ${a}><option value="dist"${e.typ==="dist"?" selected":""}>Ausschütter</option><option value="acc"${e.typ!=="dist"?" selected":""}>Thesaurierer</option></select></label>`}
+    ${L ? `<div class="inl"><span>Typ</span><span class="rov">${typLabel(e.typ)||"–"}</span></div>`
+        : `<label class="inl">Typ<select data-c="typ" ${a}><option value=""${!e.typ?" selected":""}>– keine Angabe</option><option value="dist"${e.typ==="dist"?" selected":""}>Ausschütter</option><option value="acc"${e.typ==="acc"?" selected":""}>Thesaurierer</option></select></label>`}
     <label class="inl">Wert (€)<input type="number" inputmode="decimal" min="0" step="1" data-c="wert" ${a} value="${e.wert||""}" placeholder="0"></label>
     <label class="check spr"><input type="checkbox" data-c="spar" ${a}${e.spar?" checked":""}> wird bespart</label>
   </div>`;
 }
 function buildCore(){
   $("groups").innerHTML = CS.groups.map((g,gi)=>{
-    const L = g.locked, chg = +g.ziel !== ZIEL_DEF[gi];
+    const L = g.locked, chg = zielChg(g);
     const top = L
       ? `<div class="ehead"><div class="efields">
            <h3 style="margin:2px 0 4px"><span class="dot" style="background:${CORECOL[gi]};margin:0 8px 0 0"></span>${esc(g.name)}</h3>
-           <div class="inl"><span>Ziel</span><span class="rov${chg?" chgtxt":""}">${+g.ziel||0} %${chg?" ❗":""}</span></div>
+           <div class="inl"><span>Ziel</span><span class="rov${chg?" chgtxt":""}">${+g.ziel||0} %${chg?" ⚠️":""}</span></div>
          </div><div class="eact"><button class="ico" data-cedit="${gi}" title="Baustein bearbeiten (Name, Ziel, Anbieter, WKN)" aria-label="Bearbeiten">✎</button></div></div>`
       : `<div class="ehead"><div class="efields">
            <label class="inl"><span><span class="dot" style="background:${CORECOL[gi]};margin-right:4px"></span>Name</span><input type="text" class="name" data-c="gname" data-g="${gi}" value="${esc(g.name)}" placeholder="Baustein"></label>
            <label class="inl">Ziel (%)<input type="number" inputmode="decimal" min="0" max="100" step="1" data-c="ziel" data-g="${gi}" value="${g.ziel}" class="${chg?"chg":""}"></label>
-         </div><div class="eact"><button class="ico okb" data-clock="${gi}" title="Bestätigen (Enter)" aria-label="Bestätigen">✓</button></div></div>`;
+         </div><div class="eact"><button class="ico okb" data-clock="${gi}" title="Bestätigen (Enter)" aria-label="Bestätigen">✓</button>${CS.groups.length>1?`<button class="del" data-gdel="${gi}" title="Baustein entfernen" aria-label="Baustein entfernen">×</button>`:""}</div></div>`;
     return `<div class="group">${top}
       ${g.etfs.map((e,ei)=>coreEtf(gi,ei,e,g.etfs.length,L)).join("")}
       ${L ? "" : `<button class="add small" data-cadd="${gi}">+ ETF</button>`}
@@ -490,7 +590,9 @@ function buildCore(){
   }).join("");
 }
 buildCore();
-$("rate").value = CS.rate; $("min").value = CS.min; $("band").value = CS.band; $("fine").checked = CS.fine;
+function gaddState(){ const b=$("gadd"); b.disabled = CS.groups.length>=MAXG; b.textContent = CS.groups.length>=MAXG ? `Maximal ${MAXG} Bausteine` : "+ Baustein hinzufügen"; }
+gaddState();
+$("rate").value = CS.rate || ""; $("tabT1").value = CS.tab.t1 || ""; $("tabT2").value = CS.tab.t2 || ""; $("min").value = CS.min; $("band").value = CS.band; $("fine").checked = CS.fine;
 
 function coreLock(gi, on){
   const g = CS.groups[gi];
@@ -506,10 +608,11 @@ function coreLock(gi, on){
 document.addEventListener("input", ev=>{          // läuft vor dem allgemeinen Handler (der danach renderAll aufruft)
   const t = ev.target, c = t.dataset.c; if (!c) return;
   const gi = +t.dataset.g, g = CS.groups[gi];
-  if (c==="ziel"){ g.ziel = Math.max(0, +t.value || 0); t.classList.toggle("chg", g.ziel !== ZIEL_DEF[gi]); return; }
+  if (c==="ziel"){ g.ziel = Math.max(0, +t.value || 0); t.classList.toggle("chg", zielChg(g)); return; }
   if (c==="gname"){ g.name = t.value; return; }
   const e = g.etfs[+t.dataset.e];
   if (c==="anbieter") e.anbieter = t.value;
+  else if (c==="depot") e.depot = t.value;
   else if (c==="wkn") e.wkn = t.value.toUpperCase().trim();
   else if (c==="typ") e.typ = t.value;
   else if (c==="wert") e.wert = Math.max(0, +t.value || 0);
@@ -517,16 +620,38 @@ document.addEventListener("input", ev=>{          // läuft vor dem allgemeinen 
 });
 document.addEventListener("keydown", ev=>{
   const t = ev.target;
-  if (ev.key==="Enter" && ["gname","ziel","anbieter","wkn"].includes(t.dataset.c)){ ev.preventDefault(); coreLock(+t.dataset.g, true); }
+  if (ev.key==="Enter" && ["gname","ziel","depot","anbieter","wkn"].includes(t.dataset.c)){ ev.preventDefault(); coreLock(+t.dataset.g, true); }
 });
 document.addEventListener("click", ev=>{
-  const b = ev.target.closest("[data-cadd],[data-cdel],[data-clock],[data-cedit],#zielReset"); if (!b) return;
-  if (b.id==="zielReset"){ CS.groups.forEach((g,i)=>g.ziel = ZIEL_DEF[i]); }
+  const b = ev.target.closest("[data-cadd],[data-cdel],[data-clock],[data-cedit],[data-gdel],#gadd,#zielReset,#zielSet"); if (!b) return;
+  if (b.id==="gadd"){
+    if (CS.groups.length>=MAXG) return;
+    CS.groups.forEach(g=>{ if (!g.locked && (g.name||"").trim() && g.etfs.every(e=>(e.wkn||"").trim())) g.locked = true; });
+    CS.groups.push({key:"G"+Date.now().toString(36), name:"", ziel:0, locked:false,
+                    etfs:[{depot:"", anbieter:"", wkn:"", typ:"", wert:0, spar:true}]});
+    buildCore(); gaddState(); touch(); renderAll();
+    document.querySelector(`[data-c="gname"][data-g="${CS.groups.length-1}"]`)?.focus();
+    return;
+  }
+  if (b.dataset.gdel !== undefined){
+    const gi = +b.dataset.gdel, g = CS.groups[gi];
+    const sum = g.etfs.reduce((a,e)=>a+(+e.wert||0),0);
+    if (!confirm(`Baustein „${g.name||"ohne Namen"}“ mit ${g.etfs.length} ETF(s)${sum?` und ${eur(sum)}`:""} entfernen?`)) return;
+    CS.groups.splice(gi,1); buildCore(); gaddState(); touch(); renderAll(); return;
+  }
+  if (b.id==="zielReset"){ CS.groups.forEach(g=>g.ziel = refOf(g) ?? 0); }
+  else if (b.id==="zielSet"){
+    const zs = CS.groups.map(g=>+g.ziel||0);
+    if (Math.abs(zs.reduce((a,c)=>a+c,0)-100) > 0.001) return;
+    if (!confirm(`${zs.join("/")} als neues Ziel festlegen?\nBisher: ${refText()}`)) return;
+    CS.zielRef = {}; CS.groups.forEach(g=>CS.zielRef[g.key] = +g.ziel||0);
+  }
   else if (b.dataset.cadd !== undefined){
     const g = CS.groups[+b.dataset.cadd];
-    g.etfs.push({anbieter:"", wkn:"", typ:"acc", wert:0, spar:false});
+    const prev = g.etfs[g.etfs.length-1];
+    g.etfs.push({depot:prev?.depot||"", anbieter:"", wkn:"", typ:"", wert:0, spar:false});   // Depot vom vorigen ETF vorbelegt
     buildCore(); touch(); renderAll();
-    [...document.querySelectorAll(`[data-c="anbieter"][data-g="${b.dataset.cadd}"]`)].pop()?.focus();
+    [...document.querySelectorAll(`[data-c="depot"][data-g="${b.dataset.cadd}"]`)].pop()?.focus();
     return;
   }
   else if (b.dataset.cdel){ const [gi,ei] = b.dataset.cdel.split(":").map(Number); CS.groups[gi].etfs.splice(ei,1); }
@@ -547,7 +672,7 @@ function inBand(vals, band){
   return T>0 && GROUPS.every((g,i)=>Math.abs(vals[i]/T - g.ziel) <= band + 1e-12);
 }
 function corrected(vals, S, m){
-  const R = S - 3*m;
+  const R = S - GROUPS.length*m;
   const T2 = vals.reduce((a,b)=>a+b,0) + S;
   const gaps = GROUPS.map((g,i)=>Math.max(0, g.ziel*T2 - vals[i] - m));
   const G = gaps.reduce((a,b)=>a+b,0);
@@ -571,6 +696,8 @@ function months(vals, S, m, tol){
 let CORE = {total:0, dist:0, rate:0};   // Ergebnis für den Gesamt-Reiter (nur lesend)
 
 function renderCore(){
+  renderSetup();
+  CS.tab = {t1:$("tabT1").value, t2:$("tabT2").value}; renderTabName();
   CS.rate = Math.round(num("rate")); CS.min = Math.round(num("min")); CS.band = num("band"); CS.fine = $("fine").checked;
   save(STORE, {v:2, ...CS});
   syncGroups();
@@ -583,17 +710,19 @@ function renderCore(){
 
   // Ziel-Hinweis
   const zs = CS.groups.map(g=>+g.ziel||0), zSum = zs.reduce((a,b)=>a+b,0);
-  const changed = zs.some((z,i)=>z!==ZIEL_DEF[i]), sumOk = Math.abs(zSum-100) < 0.001;
-  $("coreNote").innerHTML = `Ziel ${CS.groups.map(g=>`${+g.ziel||0} % ${esc(g.name)}`).join(" · ")} — Ausgleich nur über die Sparrate, bespart wird je Baustein der markierte ETF. Die anderen Reiter fließen hier <strong>nicht</strong> ein.`;
+  const refKeys = Object.keys(CS.zielRef), sumOk = Math.abs(zSum-100) < 0.001;
+  const changed = CS.groups.some(zielChg) || refKeys.some(k=>!CS.groups.some(g=>g.key===k));
+  $("coreNote").innerHTML = `Ziel ${CS.groups.map(g=>`${+g.ziel||0} % ${esc(g.name)}`).join(" · ")}${changed?` <span class="chgtxt">(festgelegt: ${refText()})</span>`:""} — Ausgleich nur über die Sparrate, bespart wird je Baustein der markierte ETF. Die anderen Reiter fließen hier <strong>nicht</strong> ein.`;
   $("zielWarn").style.display = changed || !sumOk ? "" : "none";
   $("zielWarnText").innerHTML = !sumOk
-    ? `❗ <strong>Vorsicht:</strong> Die Ziele ergeben zusammen ${pct(zSum,0)} statt 100 % – so kann nicht gerechnet werden.`
-    : `❗ <strong>Vorsicht:</strong> Die Zielaufteilung wurde geändert (${zs.join("/")} statt ${ZIEL_DEF.join("/")}). Das ändert die Grundlage deines Rebalancings.`;
+    ? `⚠️ <strong>Vorsicht:</strong> Die Ziele ergeben zusammen ${pct(zSum,0)} statt 100 % – so kann nicht gerechnet werden.`
+    : `⚠️ <strong>Vorsicht:</strong> Die Zielaufteilung weicht vom festgelegten Ziel ab (${zs.join("/")} statt ${refText()}). Das ändert die Grundlage deines Rebalancings. Leg sie als neues Ziel fest oder setz sie zurück.`;
+  $("zielSet").style.display = sumOk ? "" : "none";
 
   // Übersicht Einzel-ETFs
   $("coreEtfTable").innerHTML = `<thead><tr><th>WKN</th><th style="text-align:left">Baustein</th><th style="text-align:left">Typ</th><th>Wert</th><th>Anteil</th><th>Anteil im Baustein</th><th>Bespart</th></tr></thead><tbody>` +
-    CS.groups.map((g,i)=>g.etfs.map(e=>`<tr><td><span class="dot" style="background:${CORECOL[i]}"></span><strong>${esc(e.wkn)||"–"}</strong>${e.anbieter?`<span class="wk">${esc(e.anbieter)}</span>`:""}</td>
-      <td style="text-align:left">${esc(g.name)}</td><td style="text-align:left">${typLabel(e.typ)}</td><td>${eur(+e.wert||0)}</td>
+    CS.groups.map((g,i)=>g.etfs.map(e=>`<tr><td><span class="dot" style="background:${CORECOL[i]}"></span><strong>${esc(e.wkn)||"–"}</strong>${etfSub(e)?`<span class="wk">${etfSub(e)}</span>`:""}</td>
+      <td style="text-align:left">${esc(g.name)}</td><td style="text-align:left">${typLabel(e.typ)||"–"}</td><td>${eur(+e.wert||0)}</td>
       <td>${T?pct((+e.wert||0)/T*100,1):"–"}</td><td>${vals[i]?pct((+e.wert||0)/vals[i]*100,1):"–"}</td><td>${e.spar?"✅ ja":"– nein"}</td></tr>`).join("")).join("") +
     `</tbody><tfoot><tr><td>Gesamt</td><td></td><td></td><td>${eur(T)}</td><td>${T?pct(100,1):"–"}</td><td></td><td></td></tr></tfoot>`;
 
@@ -611,15 +740,18 @@ function renderCore(){
         <td class="${ok?"ok":"warn"}">${ok?"✅ im Band":"⚠️ außerhalb"}</td></tr>`;
     }).join("") +
     `</tbody><tfoot><tr><td>Gesamt</td><td>${eur(T)}</td><td>${pct(100)}</td><td></td><td></td><td></td><td></td></tr></tfoot>`;
-  $("distnote").textContent = `Ausschütter ${eur(D)} (${pct(D/T*100)}) · Thesaurierer ${eur(T-D)} (${pct((T-D)/T*100)}) – nur informativ.`;
+  const A = CS.groups.reduce((a,g)=>a+g.etfs.filter(e=>e.typ==="acc").reduce((x,e)=>x+(+e.wert||0),0),0), O = T-D-A;
+  $("distnote").textContent = (D||A) ? [D?`Ausschütter ${eur(D)} (${pct(D/T*100)})`:"", A?`Thesaurierer ${eur(A)} (${pct(A/T*100)})`:"",
+    O?`ohne Angabe ${eur(O)} (${pct(O/T*100)})`:""].filter(Boolean).join(" · ") + " – nur informativ." : "";
 
   if (!sumOk){ spar.innerHTML=""; dauer.textContent="";
     fazit.innerHTML = `⚠️ <strong>${coreLabel()}:</strong> Die Ziele ergeben ${pct(zSum,0)} – bitte so anpassen, dass sie zusammen 100 % ergeben.`; return; }
   const noSpar = CS.groups.filter(g=>!g.etfs.some(e=>e.spar));
   if (noSpar.length){ spar.innerHTML=""; dauer.textContent="";
     fazit.innerHTML = `⚠️ <strong>${coreLabel()}:</strong> In ${noSpar.map(g=>g.name).join(", ")} ist kein ETF als „wird bespart“ markiert.`; return; }
-  if (S < 3*m){ spar.innerHTML=""; dauer.textContent="";
-    fazit.innerHTML=`<span class="err">Sparrate (${eur(S)}) reicht nicht für 3 × Mindestrate (${eur(3*m)}).</span>`; return; }
+  const nG = CS.groups.length;
+  if (S < nG*m){ spar.innerHTML=""; dauer.textContent="";
+    fazit.innerHTML=`<span class="err">Sparrate (${eur(S)}) reicht nicht für ${nG} × Mindestrate (${eur(nG*m)}).</span>`; return; }
 
   const allIn = inBand(vals, band);
   const useCorr = !allIn || fine;
@@ -631,7 +763,7 @@ function renderCore(){
     const parts = roundTo(sp.map(()=>a[i]/sp.length), a[i]); const out = g.etfs.map(()=>0); sp.forEach((j,k)=>out[j]=parts[k]); return out; });
   spar.innerHTML = `<thead><tr><th>Besparter ETF</th><th>Baustein</th><th>Betrag</th><th>Anteil</th></tr></thead><tbody>` +
     CS.groups.map((g,i)=>g.etfs.map((e,j)=>!e.spar ? "" :
-      `<tr><td><strong>${esc(e.wkn)||"–"}</strong><span class="wk">${typLabel(e.typ)}${e.anbieter?" · "+esc(e.anbieter):""}</span></td><td style="text-align:left">${esc(g.name)}</td>
+      `<tr><td><strong>${esc(e.wkn)||"–"}</strong><span class="wk">${[typLabel(e.typ), etfSub(e)].filter(Boolean).join(" · ")}</span></td><td style="text-align:left">${esc(g.name)}</td>
       <td class="big">${eur(CORE.etfAlloc[i][j])}</td><td>${pct(CORE.etfAlloc[i][j]/S*100,1)}</td></tr>`).join("")).join("") +
     `</tbody><tfoot><tr><td>Summe</td><td></td><td>${eur(a.reduce((x,y)=>x+y,0))}</td><td>${pct(100,1)}</td></tr></tfoot>`;
 
@@ -952,9 +1084,9 @@ function renderAll(){
   let st = "";
   if (vorsorge){
     const r = pct(rIst*100,1), q = pct((1-rIst)*100,1);
-    if (rIst < zLo - 1e-9)      st = `<span class="warn">⚠️ Risikoreich bei ${r} – unter dem Ziel von ${pct(zLo*100,0)}. Bis zum Ziel fehlen im risikoreichen Teil ca. ${eur(zLo*vorsorge - CORE.total)} (bei gleichem Gesamtbetrag).</span>`;
-    else if (rIst > zHi + 1e-9) st = `<span class="warn">⚠️ Risikoreich bei ${r} – über der Obergrenze von ${pct(zHi*100,0)}. Der risikoarme Teil liegt ca. ${eur(CORE.total - zHi*vorsorge)} unter der Grenze.</span>`;
-    else                        st = `<span class="ok">✅ Verhältnis ${r} / ${q} – im Zielkorridor ${pct(zLo*100,0)}–${pct(zHi*100,0)} risikoreich.</span>`;
+    if (rIst < zLo - 1e-9)      st = `<span class="warn stbox">⚠️ Risikoreich bei ${r} – unter dem Ziel von ${pct(zLo*100,0)}. Bis zum Ziel fehlen im risikoreichen Teil ca. ${eur(zLo*vorsorge - CORE.total)} (bei gleichem Gesamtbetrag).</span>`;
+    else if (rIst > zHi + 1e-9) st = `<span class="warn stbox">⚠️ Risikoreich bei ${r} – über der Obergrenze von ${pct(zHi*100,0)}. Der risikoarme Teil liegt ca. ${eur(CORE.total - zHi*vorsorge)} unter der Grenze.</span>`;
+    else                        st = `<span class="ok stbox">✅ Verhältnis ${r} / ${q} – im Zielkorridor ${pct(zLo*100,0)}–${pct(zHi*100,0)} risikoreich.</span>`;
   }
   $("mixstatus").innerHTML = st;
 
@@ -989,7 +1121,7 @@ function renderAll(){
     else if (vermOk && rateOk) fz = `✅ ${AVL} Vermögen und Sparraten liegen im Korridor – Sparplan so lassen.`;
     else fz = `⚠️ ${AVL} ${!vermOk?"Vermögen":""}${!vermOk&&!rateOk?" und ":""}${!rateOk?`Sparraten (${pct(rShare*100,1)} risikoreich)`:""} außerhalb des Korridors – Rebalancing oben aktivieren, um einen Vorschlag zu sehen.`;
   } else {
-    const minsAV = [3*Math.round(num("min")), Math.max(Math.round(X.avMinArm||0), 2*Math.round(X.safePlan.min||0))];
+    const minsAV = [CS.groups.length*Math.round(num("min")), Math.max(Math.round(X.avMinArm||0), 2*Math.round(X.safePlan.min||0))];
     const okAV = v => { const T=v[0]+v[1]; return T>0 && inCorr(v[0]/T); };
     const stepAV = v => { const T=v[0]+v[1], r=T? v[0]/T : zLo;
       if (inCorr(r)) return gStd([zLo,1-zLo], S_AV, minsAV);
@@ -1006,7 +1138,7 @@ function renderAll(){
         `</tbody><tfoot><tr><td>Summe</td><td>${eur(rTot)}</td><td>${eur(a[0]+a[1])}</td><td>${pct(100,1)}</td><td>${signEur(a[0]+a[1]-rTot)}</td></tr></tfoot>`;
       note = (vermOk ? `Vermögen liegt im Korridor – Vorschlag ist die Zielaufteilung ${pct(zLo*100,0)}/${pct((1-zLo)*100,0)}.`
                      : `Vermögen liegt außerhalb des Korridors – zurück im Korridor nach ca. ${f(gMonths(valsAV, stepAV, okAV))} (Kurse/Zinsen nicht berücksichtigt).`)
-           + ` Mindestraten: ${eur(minsAV[0])} risikoreich (3 × Mindestrate), ${eur(minsAV[1])} risikoarm.`;
+           + ` Mindestraten: ${eur(minsAV[0])} risikoreich (${CS.groups.length} × Mindestrate), ${eur(minsAV[1])} risikoarm.`;
       const same = a[0]===rCur[0] && a[1]===rCur[1];
       fz = same ? `✅ ${AVL} Sparplan entspricht dem Vorschlag – nichts zu ändern.`
                 : `⚠️ ${AVL} Sparplan auf den Vorschlag umstellen: ${eur(a[0])} risikoreich · ${eur(a[1])} risikoarm.`;
@@ -1032,7 +1164,7 @@ function renderAll(){
   ].map(([l,v,sub])=>`<div class="kpi"><div class="l">${l}</div><div class="v">${v}</div>${sub?`<div class="s">${sub}</div>`:""}</div>`).join("");
 
   const topf = [
-    {l:"Altersvorsorge – Risikoreich", v:CORE.total,    c:"var(--c1)"},
+    {l:esc(coreName()), v:CORE.total,    c:"var(--c1)"},
     {l:"Altersvorsorge – Risikoarm",   v:sf.total,      c:"var(--c5)"},
     {l:"Spielgeld ETFs",     v:ex.etfTotal,   c:"var(--c2)"},
     {l:"Spielgeld Aktien",   v:ex.stockTotal, c:"var(--c3)"},
@@ -1041,7 +1173,7 @@ function renderAll(){
 
 
   $("rateTable").innerHTML = `<thead><tr><th>Sparplan</th><th>€ / Monat</th><th>€ / Jahr</th></tr></thead><tbody>
-    <tr><td>Altersvorsorge – Risikoreich (Thesaurierer)</td><td>${eur(CORE.rate)}</td><td>${eur(CORE.rate*12)}</td></tr>
+    <tr><td>${esc(coreName())}</td><td>${eur(CORE.rate)}</td><td>${eur(CORE.rate*12)}</td></tr>
     <tr><td>Altersvorsorge – Risikoarm</td><td>${eur(sf.rate)}</td><td>${eur(sf.rate*12)}</td></tr>
     <tr><td>Spielgeld ETFs (Scalable)</td><td>${eur(ex.etfRate)}</td><td>${eur(ex.etfRate*12)}</td></tr>
     </tbody><tfoot><tr><td>Gesamt</td><td>${eur(rateTotal)}</td><td>${eur(rateTotal*12)}</td></tr></tfoot>`;
@@ -1051,8 +1183,8 @@ function renderAll(){
     const share = value/total*100, lim = cap/100*total, diff = Math.abs(lim - value);
     const base = `${label}: <strong>${eur(value)}</strong> von ${eur(total)} Gesamtvermögen = <strong>${pct(share,1)}</strong>`;
     return share > cap
-      ? `<span class="warn">⚠️ ${base} – über deiner Grenze von ${pct(cap,1)} (${eur(lim)}), also ${eur(diff)} darüber.</span>`
-      : `<span class="ok">✅ ${base} – unter deiner Grenze von ${pct(cap,1)} (${eur(lim)}), noch ${eur(diff)} Luft.</span>`;
+      ? `<span class="warn stbox">⚠️ ${base} – über deiner Grenze von ${pct(cap,1)} (${eur(lim)}), also ${eur(diff)} darüber.</span>`
+      : `<span class="ok stbox">✅ ${base} – unter deiner Grenze von ${pct(cap,1)} (${eur(lim)}), noch ${eur(diff)} Luft.</span>`;
   };
   $("capnote").innerHTML    = capNote("Spielgeld Aktien", ex.stockTotal, X.cap);
   renderStand();
@@ -1210,7 +1342,7 @@ $("expCsv").addEventListener("click", ()=>{
   const rows = [["Bereich","Position","WKN / Anbieter","Art","Wert (€)","Anteil im Bereich (%)","Zins (% p.a.)","Sparrate (€/Monat)"]];
   // Risikoreich
   const cT = CORE.total;
-  CS.groups.forEach((g,i)=>g.etfs.forEach((e,j)=>rows.push(["Altersvorsorge – Risikoreich", g.name + (e.anbieter?` – ${e.anbieter}`:""), e.wkn||"", typLabel(e.typ),
+  CS.groups.forEach((g,i)=>g.etfs.forEach((e,j)=>rows.push([coreName(), [g.name, e.anbieter, e.depot && `Depot ${e.depot}`].filter(Boolean).join(" – "), e.wkn||"", typLabel(e.typ),
     n(+e.wert||0), cT?n((+e.wert||0)/cT*100):"", "", n(CORE.etfAlloc ? CORE.etfAlloc[i][j] : 0)])));
   // Risikoarm
   const sT = X.safe.reduce((a,s)=>a+(s.saldo||0),0);
@@ -1228,7 +1360,7 @@ $("expCsv").addEventListener("click", ()=>{
   X.stocks.forEach((s,i)=>rows.push(["Spielgeld Aktien", itemName("stocks",s,i), s.wkn||"", [s.anz?`${n(s.anz)} Stück`:"", s.kauf?`Kaufkurs ${n(s.kauf)} €`:""].filter(Boolean).join(", "), n(s.wert), aT?n((s.wert||0)/aT*100):"", "", ""]));
   // Zusammenfassung
   rows.push([]); rows.push(["Zusammenfassung","Topf","","","Wert (€)","Anteil Gesamtvermögen (%)","","Sparrate (€/Monat)"]);
-  const tops = [["Altersvorsorge – Risikoreich", cT, CORE.rate], ["Altersvorsorge – Risikoarm", sT, X.safePlan.gesamt||0],
+  const tops = [[coreName(), cT, CORE.rate], ["Altersvorsorge – Risikoarm", sT, X.safePlan.gesamt||0],
                 ["Spielgeld ETFs", eT, X.etfs.reduce((a,e)=>a+e.rate,0)], ["Spielgeld Aktien", aT, 0]];
   const G = tops.reduce((a,t)=>a+t[1],0);
   tops.forEach(t=>rows.push(["Zusammenfassung", t[0], "", "", n(t[1]), G?n(t[1]/G*100):"", "", n(t[2])]));
