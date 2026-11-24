@@ -32,7 +32,6 @@
     font:15px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
   main{max-width:880px;margin:0 auto;padding:28px 16px 48px}
   h1{font-size:22px;margin:0 0 4px}
-  .sub{color:var(--muted);margin:0 0 18px}
   nav{display:flex;gap:4px;border-bottom:1px solid var(--line);margin-bottom:18px;overflow-x:auto}
   nav button{background:none;border:none;border-bottom:2px solid transparent;color:var(--muted);
     font:inherit;font-weight:600;padding:8px 14px 10px;cursor:pointer;white-space:nowrap;text-align:left;line-height:1.25}
@@ -104,7 +103,7 @@
   .ok{color:var(--ok)} .warn{color:var(--warn)} .pos{color:var(--ok)} .neg{color:var(--neg)}
   .scroll{overflow-x:auto}
   .fazit{font-size:16px;margin:0}
-  .head{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap}
+  .head{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:14px}
   .stand{font-size:13px;color:var(--muted);text-align:right;font-variant-numeric:tabular-nums;line-height:1.5}
   .stand strong{color:var(--text)}
   .stand .old{color:var(--warn)}
@@ -190,7 +189,6 @@
   @media (max-width:600px){
     main{padding-top:calc(14px + env(safe-area-inset-top))}
     h1{font-size:20px}
-    .sub{font-size:13px;margin-bottom:12px}
     input[type=number],input[type=text],select{font-size:16px}       /* verhindert Auto-Zoom auf dem iPhone */
     label.inl > input, label.inl > select{padding:7px 8px}
     .card{padding:14px;border-radius:10px}
@@ -226,10 +224,9 @@
 <body>
 <main>
   <div class="head"><h1>Depot-Rechner<span class="offline">● offline</span></h1><div class="stand" id="stand"></div></div>
-  <p class="sub">Vorsorge-Rebalancing plus Überblick über alle weiteren Bestände.</p>
 
   <nav>
-    <button data-tab="daten"><span class="t1">⚙</span>Daten</button>
+    <button data-tab="daten"><span class="t1">ℹ️</span>Info</button>
     <button data-tab="vorsorge" class="active" id="navCore"><span class="t1">Altersvorsorge</span>Risikoreich</button>
     <button data-tab="safe"><span class="t1">Altersvorsorge</span>Risikoarm</button>
     <button data-tab="av"><span class="t1">Übersicht</span>Altersvorsorge</button>
@@ -238,8 +235,14 @@
     <button data-tab="gesamt"><span class="t1">Übersicht</span>Gesamt</button>
   </nav>
 
-  <!-- ============ DATEN: Sicherung, Info, Zurücksetzen ============ -->
+  <!-- ============ INFO: Info, Sicherung, Zurücksetzen (id "daten") ============ -->
   <section class="tab" id="tab-daten">
+    <section class="card st-info">
+      <h2 style="color:var(--text)">ℹ️ Info</h2>
+      <p>Alle Daten liegen <b>nur auf diesem Gerät</b> im Speicher des Browsers. Es gibt keinen Server und keine Übertragung ins Internet.</p>
+      <p>Deinstallieren der App löscht die Daten <b>nicht</b>. „Websitedaten löschen“ in den Chrome-Einstellungen löscht sie dagegen schon – deshalb regelmäßig sichern.</p>
+      <dl><dt>App-Version</dt><dd id="appVer">–</dd><dt>Letzte Datenänderung</dt><dd id="lastChg">–</dd></dl>
+    </section>
     <section class="card">
       <h2>Sicherung</h2>
       <p>Die Sicherung (JSON-Datei) enthält alle Eingaben aus allen Reitern. Damit überträgst du deine Daten auf ein anderes Gerät oder stellst sie nach dem Zurücksetzen wieder her.</p>
@@ -258,12 +261,6 @@
         <button type="button" class="btn sec" id="expPdf">PDF speichern</button>
       </div>
       <p class="tmsg" id="tmsg" style="margin:10px 0 0"></p>
-    </section>
-    <section class="card st-info">
-      <h2 style="color:var(--text)">ℹ️ Info</h2>
-      <p>Alle Daten liegen <b>nur auf diesem Gerät</b> im Speicher des Browsers. Es gibt keinen Server und keine Übertragung ins Internet.</p>
-      <p>Deinstallieren der App löscht die Daten <b>nicht</b>. „Websitedaten löschen“ in den Chrome-Einstellungen löscht sie dagegen schon – deshalb regelmäßig sichern.</p>
-      <dl><dt>App-Version</dt><dd id="appVer">–</dd><dt>Letzte Änderung</dt><dd id="lastChg">–</dd></dl>
     </section>
     <section class="card">
       <h2>Alle Daten zurücksetzen</h2>
@@ -1288,11 +1285,6 @@ setInterval(()=>renderStand(), 30000);   // Uhrzeit "Stand" laufend aktuell halt
 function renderStand(){
   const el = $("stand"), now = new Date();
   let html = `Stand: <strong>${now.toLocaleDateString("de-DE")}, ${now.toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"})} Uhr</strong>`;
-  if (X.stand){
-    const d = new Date(X.stand), days = Math.floor((now - d)/86400000);
-    html += `<br>Letzte Änderung: ${d.toLocaleDateString("de-DE")}, ${d.toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"})} Uhr` +
-      (days >= 30 ? `<br><span class="old">⚠️ Werte sind ${days} Tage alt</span>` : "");
-  }
   el.innerHTML = html;
 }
 document.addEventListener("click", e=>{
@@ -1403,7 +1395,8 @@ function renderDaten(){
   const days = le ? Math.floor((Date.now() - new Date(le))/86400000) : null;
   $("lastExp").innerHTML = !le ? `<span class="warn">⚠️ Auf diesem Gerät wurde noch keine Sicherung exportiert.</span>`
     : `Letzte Sicherung: <b>${fmtWhen(le)}</b>` + (days > 30 ? ` <span class="warn">⚠️ vor ${days} Tagen</span>` : "");
-  $("lastChg").textContent = X.stand ? fmtWhen(X.stand) : "–";
+  const cd = X.stand ? Math.floor((Date.now() - new Date(X.stand))/86400000) : 0;
+  $("lastChg").innerHTML = X.stand ? fmtWhen(X.stand) + (cd >= 30 ? `<br><span class="warn">⚠️ Werte sind ${cd} Tage alt</span>` : "") : "–";
 }
 document.querySelector('nav button[data-tab="daten"]').addEventListener("click", renderDaten);
 renderDaten();
