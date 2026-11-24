@@ -754,8 +754,7 @@ function renderCoreZiel(){
   ring("ringCoreZiel", CS.groups.map((g,gi)=>({l:g.name||`Baustein ${gi+1}`, v:+g.ziel||0, c:CORECOL[gi]})), "Baustein", "Bausteine");
   const zero = CS.groups.filter(g=>!(+g.ziel));
   $("coreZielTxt").innerHTML = !CS.groups.length ? "" : ok
-    ? `Toleranzband ± ${(CS.band||0).toLocaleString("de-DE")} pp je Baustein.` +
-      (zero.length ? `<br>ℹ️ ${zero.map(g=>`„${esc(g.name||"ohne Namen")}“`).join(", ")} hat noch kein Ziel (0 %) – mit ✎ anpassen.` : "")
+    ? (zero.length ? `ℹ️ ${zero.map(g=>`„${esc(g.name||"ohne Namen")}“`).join(", ")} hat noch kein Ziel (0 %) – mit ✎ anpassen.` : "")
     : `<span class="warn">⚠️ Die Ziele ergeben ${pct(sum,0)} statt 100 % – mit ✎ anpassen.</span>`;
   $("coreZielSum").innerHTML = ok ? `Summe ${pct(sum,0)} ✅` : `<span class="warn">Summe ${pct(sum,0)} – ${sum<100?`noch ${pct(100-sum,0)} verteilen`:`${pct(sum-100,0)} zu viel`}</span>`;
 }
@@ -1200,8 +1199,7 @@ function renderSafeZiel(){
   const sum = sZielSum(), ok = Math.abs(sum-100) < 0.001, band = (X.safePlan && X.safePlan.band) || 0;
   ring("ringSafeZiel", X.sg.map((g,gi)=>({l:g.name||`Baustein ${gi+1}`, v:+g.ziel||0, c:SCOL(gi)})), "Baustein", "Bausteine");
   $("safeZielTxt").innerHTML = !X.sg.length ? "" : ok
-    ? `Toleranzband ± ${band.toLocaleString("de-DE")} pp je Baustein.` +
-      (X.sg.some(g=>!(+g.ziel)) ? `<br>ℹ️ ${X.sg.filter(g=>!(+g.ziel)).map(g=>`„${esc(g.name||"ohne Namen")}“`).join(", ")} hat noch kein Ziel (0 %) – mit ✎ anpassen.` : "")
+    ? (X.sg.some(g=>!(+g.ziel)) ? `ℹ️ ${X.sg.filter(g=>!(+g.ziel)).map(g=>`„${esc(g.name||"ohne Namen")}“`).join(", ")} hat noch kein Ziel (0 %) – mit ✎ anpassen.` : "")
     : `<span class="warn">⚠️ Die Ziele ergeben ${pct(sum,0)} statt 100 % – mit ✎ anpassen.</span>`;
   $("safeZielSum").innerHTML = ok ? `Summe ${pct(sum,0)} ✅` : `<span class="warn">Summe ${pct(sum,0)} – ${sum<100?`noch ${pct(100-sum,0)} verteilen`:`${pct(sum-100,0)} zu viel`}</span>`;
 }
