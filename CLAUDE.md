@@ -15,7 +15,7 @@ Sprache der App und der Kommunikation: **Deutsch**.
 |---|---|
 | `index.html` | Die komplette App: HTML, CSS und JavaScript in einer Datei |
 | `html2pdf.bundle.min.js` | html2pdf.js 0.10.1 (MIT), lokal für PDF-Export offline – nicht ändern |
-| `sw.js` | Service Worker: Cache-first, Liste `FILES`, Konstante `VERSION` |
+| `sw.js` | Service Worker: Cache-first, Liste `FILES`, Konstante `VERSION`; lädt beim Installieren mit `cache: "reload"` (nie aus dem HTTP-Cache) |
 | `manifest.webmanifest` | PWA-Manifest (Name, Icons, Farben) |
 | `icon-v2-*.png` | App-Icons (Pfeil-Diagramm in Mint auf Grün→Nachtblau-Verlauf) |
 | `ANLEITUNG.md` | Anleitung für Nutzer (Hosting, Installation, Datenübernahme) |
