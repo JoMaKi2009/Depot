@@ -415,7 +415,6 @@
       <h2>Ist-Verteilung Vermögen</h2>
       <div class="bar" id="barMix"></div>
       <div class="scroll"><table id="mixTable"></table></div>
-      <p class="fazit" id="mixstatus" style="margin-top:14px"></p>
     </section>
     <section class="card">
       <h2>Sparplan</h2>
@@ -423,7 +422,6 @@
         <div><label for="avRate" id="lblAvRate">Sparrate gesamt (€/Monat)</label><input type="number" inputmode="decimal" id="avRate" min="0" step="1" placeholder="0"></div>
         <div><label for="mixZiel" id="lblMixZiel">Ziel (%)</label><input type="number" inputmode="decimal" id="mixZiel" min="0" max="100" step="1" placeholder="z. B. 60"></div>
         <div><label for="mixBand">Toleranzband (± Prozentpunkte)</label><input type="number" inputmode="decimal" id="mixBand" min="0" step="0.5" value="5"></div>
-        <div><label for="avMinArm" id="lblAvMin">Mindestrate (€/Monat)</label><input type="number" inputmode="decimal" id="avMinArm" min="0" step="1" value="0"></div>
       </div>
       <p class="note" id="avRateNote"></p>
       <p style="margin:14px 0 0"><label class="check"><input type="checkbox" id="avReb"> <span id="avRebTxt">Rebalancing: Gesamtsparrate aufteilen</span></label></p>
@@ -1143,7 +1141,7 @@ $("spFrei").value = X.safeFrei || "";
 $("spG").value = X.safePlan.gesamt || ""; $("spMin").value = X.safePlan.min;
 $("spBand").value = X.safePlan.band; $("spFine").checked = !!X.safePlan.fine;
 $("avReb").checked = !!X.avReb;
-$("avMinArm").value = X.avMinArm || 0;
+delete X.avMinArm;   // eigenes Feld „Mindestrate risikoarm“ entfallen – es gelten die Mindestraten aus Reiter 1/2
 $("avRate").value = X.avRate || "";
 $("cap").value = X.cap;
 if (X.capEtf === undefined) X.capEtf = 10;
@@ -1157,7 +1155,6 @@ function renderExtra(){
   X.safePlan = {gesamt:Math.max(0,num("spG")), min:Math.max(0,num("spMin")),
                 band:Math.max(0,num("spBand")), fine:$("spFine").checked};
   X.avReb = $("avReb").checked;
-  X.avMinArm = Math.max(0, num("avMinArm"));
   X.avRate = Math.max(0, Math.round(num("avRate")));
   X.safeFrei = Math.max(0, num("spFrei"));
   $("resetEtfs").parentNode.style.display = X.etfs.length ? "" : "none";
@@ -1277,7 +1274,7 @@ function renderSafe(){
   } else if (rate <= 0){
     const fromAV = X.avApplied && X.avApplied[1] === 0;
     spF = fromAV
-      ? `ℹ️ <strong>${esc(safeShort())}:</strong> Sparrate aktuell 0 € – übernommen aus dem Rebalancing in „${esc(avName())}“. Dieser Teil liegt über dem Zielkorridor und wird vorerst nicht bespart; die Gesamtrate fließt in „${esc(coreShort())}“. ${avLink()}`
+      ? `ℹ️ <strong>${esc(safeShort())}:</strong> Sparrate aktuell 0 € – übernommen aus dem Rebalancing in „${esc(avName())}“. Dieser Teil liegt über dem Band und wird vorerst nicht bespart; die Gesamtrate fließt in „${esc(coreShort())}“. ${avLink()}`
       : `<span class="empty">Sparrate gesamt eintragen – oder über das Rebalancing in <a href="#" class="goto" data-goto="av">„${esc(avName())}“</a> berechnen lassen.</span>`;
   } else if (noSpar.length){
     spF = `⚠️ ${lbl} In ${noSpar.map(g=>esc(g.name)).join(", ")} ist keine Position als „wird bespart“ markiert.`;
@@ -1367,26 +1364,25 @@ function renderAll(){
     ` Das Rebalancing der Gesamtsparrate ist optional und ändert erst etwas, wenn du den Vorschlag übernimmst.`;
   $("lblMixZiel").innerHTML = `Ziel ${nA} (%)`;
   $("lblAvRate").innerHTML = `Sparrate gesamt „${esc(avShort())}“ (€/Monat)`;
-  $("lblAvMin").innerHTML = `Mindestrate ${nB} (€/Monat)`;
   $("avRebTxt").innerHTML = `Rebalancing: Gesamtsparrate auf ${nA} / ${nB} aufteilen`;
   $("avApplyNote").innerHTML = `Übernehmen trägt die beiden Beträge als „Sparrate gesamt“ in ${nA} und ${nB} ein – dort wird dann wie gewohnt innerhalb des Teils aufgeteilt.`;
 
   // Ist-Verteilung Vermögen
   bar("barMix", mix);
-  $("mixTable").innerHTML = `<thead><tr><th>Teil</th><th>Wert</th><th>Ist %</th><th>Ziel %</th><th>Korridor</th><th>Abw. pp</th><th>Abw. €</th></tr></thead><tbody>` +
+  $("mixTable").innerHTML = `<thead><tr><th>Teil</th><th>Wert</th><th>Ist %</th><th>Ziel %</th><th>Band</th><th>Abw. pp</th><th>Abw. €</th></tr></thead><tbody>` +
     mix.map((m,r)=>{ const ist = vorsorge ? m.v/vorsorge : 0, z = r===0 ? zZ : 1-zZ;
       return `<tr><td><span class="dot" style="background:${m.c}"></span>${m.l}</td><td>${eur(m.v)}</td>
         <td>${vorsorge?pct(ist*100,1):"–"}</td><td>${zielFor(r)}</td><td>${korrFor(r)}</td>
         <td>${vorsorge&&hasZ?pp((ist-z)*100):"–"}</td><td>${vorsorge&&hasZ?signEur(m.v - z*vorsorge):"–"}</td></tr>`; }).join("") +
     `</tbody><tfoot><tr><td>Gesamt</td><td>${eur(vorsorge)}</td><td>${vorsorge?pct(100,1):"–"}</td><td>${hasZ?pct(100,0):"–"}</td><td></td><td></td><td></td></tr></tfoot>`;
-  let st = "";
+  // Aussage zum Vermögen – erscheint im Fazit unten (wie Reiter 1/2)
+  let vermTxt = "";
   if (vorsorge && hasZ){
-    const r = pct(rIst*100,1), q = pct((1-rIst)*100,1), korr = `${p0(zLo)} – ${p0(zHi)}`;
-    if (rIst < zLo - 1e-9)      st = `<span class="warn stbox">⚠️ ${nA} bei ${r} – unter dem Korridor (${korr}). Bis zum Ziel von ${p0(zZ)} fehlen in ${nA} ca. ${eur(zZ*vorsorge - CORE.total)} (bei gleichem Gesamtbetrag).</span>`;
-    else if (rIst > zHi + 1e-9) st = `<span class="warn stbox">⚠️ ${nA} bei ${r} – über dem Korridor (${korr}). Bis zum Ziel fehlen in ${nB} ca. ${eur(CORE.total - zZ*vorsorge)} (bei gleichem Gesamtbetrag).</span>`;
-    else                        st = `<span class="ok stbox">✅ Verhältnis ${r} ${nA} / ${q} ${nB} – im Zielkorridor ${p0(zZ)} ${bandTxt} (${korr}).</span>`;
+    const r = pct(rIst*100,1), korr = `${p0(zLo)} – ${p0(zHi)}`;
+    if (rIst < zLo - 1e-9)      vermTxt = `Vermögen bei ${r} ${nA} – unter dem Band (${korr}); bis zum Ziel von ${p0(zZ)} fehlen in ${nA} ca. ${eur(zZ*vorsorge - CORE.total)}.`;
+    else if (rIst > zHi + 1e-9) vermTxt = `Vermögen bei ${r} ${nA} – über dem Band (${korr}); bis zum Ziel fehlen in ${nB} ca. ${eur(CORE.total - zZ*vorsorge)}.`;
+    else                        vermTxt = `Vermögen bei ${r} ${nA} – im Band (${korr}).`;
   }
-  $("mixstatus").innerHTML = st;
 
   // Sparplan
   const rCur = [CORE.rate, sf.rate];
@@ -1415,19 +1411,19 @@ function renderAll(){
       rateMix.map(m=>`<tr><td><span class="dot" style="background:${m.c}"></span>${m.l}</td>
         <td>${eur(m.v)}</td><td>${eur(m.v*12)}</td><td>${rTot?pct(m.v/rTot*100,1):"–"}</td></tr>`).join("") +
       `</tbody><tfoot><tr><td>Gesamt</td><td>${eur(rTot)}</td><td>${eur(rTot*12)}</td><td>${rTot?pct(100,1):"–"}</td></tr></tfoot>`;
-    fz = `ℹ️ <strong>${esc(avShort())} gesamt:</strong> Noch kein Ziel festgelegt. Trag im Sparplan oben ein, welchen Anteil ${nA} haben soll – der Rest ist ${nB}. Danach zeigt dieser Teil Abweichung, Korridor und auf Wunsch einen Vorschlag für die Sparraten.`;
+    fz = `ℹ️ <strong>${esc(avShort())} gesamt:</strong> Noch kein Ziel festgelegt. Trag im Sparplan oben ein, welchen Anteil ${nA} haben soll – der Rest ist ${nB}. Danach zeigt dieser Teil Abweichung, Band und auf Wunsch einen Vorschlag für die Sparraten.`;
   } else if (!X.avReb){
     bar("barRateMix", rateMix);
-    $("rateMixTable").innerHTML = `<thead><tr><th>Teil</th><th>€ / Monat</th><th>€ / Jahr</th><th>Ist %</th><th>Ziel %</th><th>Korridor</th></tr></thead><tbody>` +
+    $("rateMixTable").innerHTML = `<thead><tr><th>Teil</th><th>€ / Monat</th><th>€ / Jahr</th><th>Ist %</th><th>Ziel %</th><th>Band</th></tr></thead><tbody>` +
       rateMix.map((m,i)=>`<tr><td><span class="dot" style="background:${m.c}"></span>${m.l}</td>
         <td>${eur(m.v)}</td><td>${eur(m.v*12)}</td><td>${rTot?pct(m.v/rTot*100,1):"–"}</td><td>${zielFor(i)}</td><td>${korrFor(i)}</td></tr>`).join("") +
       `</tbody><tfoot><tr><td>Gesamt</td><td>${eur(rTot)}</td><td>${eur(rTot*12)}</td><td>${rTot?pct(100,1):"–"}</td><td>${pct(100,0)}</td><td></td></tr></tfoot>`;
     note = rTot ? `Bleiben die Sparraten so, bewegt sich das Vermögens-Verhältnis langfristig Richtung ${pct(rShare*100,1)} ${nA} (Kurse und Zinsen nicht berücksichtigt).` : "";
     if (!rTot) fz = `<span class="empty">Sparraten in <a href="#" class="goto" data-goto="vorsorge">${nA}</a> und <a href="#" class="goto" data-goto="safe">${nB}</a> eintragen.</span>`;
-    else if (vermOk && rateOk) fz = `✅ ${AVL} Vermögen und Sparraten liegen im Korridor – Sparplan so lassen.`;
-    else fz = `⚠️ ${AVL} ${!vermOk?"Vermögen":""}${!vermOk&&!rateOk?" und ":""}${!rateOk?`Sparraten (${pct(rShare*100,1)} ${nA})`:""} außerhalb des Korridors – Rebalancing oben aktivieren, um einen Vorschlag zu sehen.`;
+    else { const ok = (!vorsorge || vermOk) && rateOk;
+      fz = `${ok?"✅":"⚠️"} ${AVL} ${vermTxt} Sparraten bei ${pct(rShare*100,1)} ${nA} – ${rateOk?"im Band":"außerhalb des Bands"}. ${ok?"Sparplan so lassen.":"Rebalancing oben aktivieren, um einen Vorschlag zu sehen."}`; }
   } else {
-    const minsAV = [CS.groups.length*Math.round(num("min")), Math.max(Math.round(X.avMinArm||0), X.sg.length*Math.round(X.safePlan.min||0))];
+    const minsAV = [CS.groups.length*Math.round(num("min")), X.sg.length*Math.round(X.safePlan.min||0)];
     const okAV = v => { const T=v[0]+v[1]; return T>0 && inCorr(v[0]/T); };
     const tgAV = [zZ, 1-zZ];
     const stepAV = v => { const T=v[0]+v[1], r=T? v[0]/T : zZ;     // wie Reiter 1: im Band nach Ziel (oder Feinausgleich), sonst Lücke zum Ziel füllen
@@ -1442,14 +1438,17 @@ function renderAll(){
         rateMix.map((x,i)=>`<tr><td><span class="dot" style="background:${x.c}"></span><strong>${x.l}</strong></td><td>${eur(rCur[i])}</td>
           <td class="big">${eur(a[i])}</td><td>${pct(a[i]/S_AV*100,1)}</td><td>${signEur(a[i]-rCur[i])}</td></tr>`).join("") +
         `</tbody><tfoot><tr><td>Summe</td><td>${eur(rTot)}</td><td>${eur(a[0]+a[1])}</td><td>${pct(100,1)}</td><td>${signEur(a[0]+a[1]-rTot)}</td></tr></tfoot>`;
-      note = (!vorsorge ? `Noch keine Werte – Vorschlag ist die Zielaufteilung ${p0(zZ)}/${p0(1-zZ)}.`
-            : vermOk ? (X.mixFine ? `Vermögen liegt im Korridor – Feinausgleich: Vorschlag gleicht Richtung Ziel ${p0(zZ)}/${p0(1-zZ)} aus.`
-                                  : `Vermögen liegt im Korridor – Vorschlag ist die Zielaufteilung ${p0(zZ)}/${p0(1-zZ)}.`)
-                     : `Vermögen liegt außerhalb des Korridors – zurück im Korridor nach ca. ${f(gMonths(valsAV, stepAV, okAV))} (Kurse/Zinsen nicht berücksichtigt).`)
-           + ` Mindestraten: ${eur(minsAV[0])} ${nA} (${CS.groups.length} × Mindestrate), ${eur(minsAV[1])} ${nB}.`;
+      const zs = `${p0(zZ)}/${p0(1-zZ)}`.replace(/ %/g,"");
+      if (!vorsorge) note = `Standardaufteilung ${zs} nach Ziel.`;
+      else if (vermOk && !X.mixFine) note = `Standardaufteilung ${zs} – Vermögen liegt im Band.`;
+      else {                                                           // wie Reiter 1/2: Monate bis ins Band und bis aufs Ziel
+        const mb = vermOk ? 0 : gMonths(valsAV, stepAV, okAV);
+        const mz = gMonths(valsAV, v=>gRebal(v, tgAV, S_AV, minsAV), v=>{ const T=v[0]+v[1]; return T>0 && Math.abs(v[0]/T - zZ) <= 0.005; });
+        note = (vermOk ? "" : `Zurück im Band nach ca. ${f(mb)}. `) + (mz===0 ? `Bereits auf Ziel (±0,5 pp)` : `Auf Ziel (±0,5 pp) nach ca. ${f(mz)}`) + ` – Kurse/Zinsen nicht berücksichtigt, Aufteilung jeden Monat neu berechnen.`;
+      }
       const same = a[0]===rCur[0] && a[1]===rCur[1];
-      fz = same ? `✅ ${AVL} Sparplan entspricht dem Vorschlag – nichts zu ändern.`
-                : `⚠️ ${AVL} Sparplan auf den Vorschlag umstellen: ${eur(a[0])} ${nA} · ${eur(a[1])} ${nB}.`;
+      fz = same ? `✅ ${AVL} ${vermTxt} Sparplan entspricht dem Vorschlag – nichts zu ändern.`
+                : `⚠️ ${AVL} ${vermTxt} Sparplan auf den Vorschlag umstellen: ${eur(a[0])} ${nA} · ${eur(a[1])} ${nB}.`;
     }
     $("avApply").disabled = !AV_SUGGEST || (AV_SUGGEST[0]===rCur[0] && AV_SUGGEST[1]===rCur[1]);
   }

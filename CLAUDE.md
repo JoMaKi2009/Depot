@@ -115,6 +115,10 @@ Reiter 2–6 speichern unter `depot-rechner-extra-v1` (Objekt `X`).
   Im Band Aufteilung nach Ziel (`gStd`), außerhalb oder mit Feinausgleich Lücken zum Ziel füllen (`gRebal`).
   Migration: altes `mixZiel`/`mixMax` → Mitte ± halbe Breite (60/70 → 65 ± 5), `mixMax` wird gelöscht.
   Neue Nutzer: Ziel leer, Band 5. (Früher: Korridor nur vom Ziel nach oben – mit Nutzerin/Nutzer geändert.)
+- **Feinschliff (fertig):** Kein Statuskasten mehr unter „Ist-Verteilung“ – Aussage zum Vermögen steht im Fazit unten
+  (wie Reiter 1/2). Feld „Mindestrate risikoarm“ (`X.avMinArm`) entfernt und beim Laden gelöscht; es gelten die
+  Mindestraten aus Reiter 1/2. Text unter „Sparrate – Aufteilung“ wie Reiter 1/2 (Standardaufteilung / Zurück im
+  Band nach … / Auf Ziel nach …). Begriff einheitlich „Band“ statt „Korridor“.
 
 ## Nächster Schritt
 Reiter 3: **D** ℹ️-Hinweis im leeren Zustand (noch keine Werte/Sparraten in Reiter 1/2) mit Links dorthin.
