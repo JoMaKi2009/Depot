@@ -364,6 +364,10 @@
       <div class="bar" id="barSafe"></div>
       <div class="scroll"><table id="safeTable"></table></div>
       <p class="note" id="safenote"></p>
+      <div class="row" style="margin-top:12px">
+        <div><label for="spFrei">Freibetrag für diese Zinsen (€/Jahr)</label><input type="number" inputmode="decimal" id="spFrei" min="0" step="1" placeholder="0"></div>
+      </div>
+      <p class="note">Der Sparerpauschbetrag (1.000 €, bei Paaren 2.000 €) gilt für alle Kapitalerträge zusammen, auch für ETF-Ausschüttungen. Hier nur eintragen, was davon für diese Zinsen übrig bleibt.</p>
     </section>
     <section class="card">
       <h2>Ist-Verteilung</h2>
@@ -853,7 +857,7 @@ function renderCore(){
     const mz = months(vals, S, m, 0.005);
     const f = k => k===null ? "mehr als 50 Jahre" : (k===1 ? "1 Monat" : k+" Monaten");
     dauer.textContent = (allIn ? "" : `Zurück im Band nach ca. ${f(mb)}. `) +
-      `Auf Ziel (±0,5 pp) nach ca. ${f(mz)} – Kurse konstant angenommen, Aufteilung jeden Monat neu berechnen.` + mNote;
+      (mz===0 ? `Bereits auf Ziel (±0,5 pp)` : `Auf Ziel (±0,5 pp) nach ca. ${f(mz)}`) + ` – Kurse konstant angenommen, Aufteilung jeden Monat neu berechnen.` + mNote;
   }
   const L = `<strong>${coreLabel()}:</strong>`;
   fazit.innerHTML = allIn
@@ -1002,6 +1006,7 @@ if (X.mixMax  === undefined) X.mixMax  = 70;
 $("mixZiel").value = X.mixZiel; $("mixMax").value = X.mixMax;
 X.safePlan = Object.assign({gesamt:0, ziel:50, min:0, band:5, fine:false}, X.safePlan||{});
 X.safe.forEach(s=>{ if (s.art!=="anl") s.art="tg"; });
+$("spFrei").value = X.safeFrei || "";
 $("spG").value = X.safePlan.gesamt || ""; $("spZiel").value = X.safePlan.ziel; $("spMin").value = X.safePlan.min;
 $("spBand").value = X.safePlan.band; $("spFine").checked = !!X.safePlan.fine;
 $("avReb").checked = !!X.avReb;
@@ -1020,6 +1025,7 @@ function renderExtra(){
   X.avReb = $("avReb").checked;
   X.avMinArm = Math.max(0, num("avMinArm"));
   X.avRate = Math.max(0, Math.round(num("avRate")));
+  X.safeFrei = Math.max(0, num("spFrei"));
   X.safeTab = {t1:$("safeT1").value, t2:$("safeT2").value}; renderSafeName();
   save(XSTORE, X);
 
@@ -1089,6 +1095,7 @@ function renderSafe(){
   const tot = S.reduce((a,s)=>a+s.saldo,0), rate = P.gesamt;
   const zj  = S.reduce((a,s)=>a+s.saldo*s.zins/100,0);
   const tax = 0.26375;   // Abgeltungsteuer 25 % + Soli, ohne Kirchensteuer
+  const frei = X.safeFrei || 0, zSt = Math.max(0, zj - frei), zNetto = zj - zSt*tax;   // Steuer nur über dem Freibetrag
   const avg = totTg ? zj/totTg*100 : 0;     // Ø-Zins nur über die Konten
   S.forEach((s,i)=>{ const el=$("fsum"+i); if(el) el.textContent = s.art!=="anl" && s.saldo&&s.zins ? `Zinsen ca. ${eur2(s.saldo*s.zins/100)} / Jahr` : ""; });
 
@@ -1104,7 +1111,7 @@ function renderSafe(){
   // 12-Monats-Ausblick: monatliche Verzinsung mit Ø-Zins, Sparrate gesamt am Monatsende, Zins konstant, vor Steuern
   const r = avg/100/12; let fvTg = totTg; for (let m=0; m<12; m++) fvTg = fvTg*(1+r);
   const fv = fvTg + (tot - totTg) + 12*rate;
-  $("safenote").innerHTML = tot||rate ? `Zinsen pro Jahr: <strong>${eur2(zj)}</strong> brutto · <strong>${eur2(zj*(1-tax))}</strong> nach Steuer (Abgeltungsteuer + Soli, 26,375 %, ohne Kirchensteuer).<br>
+  $("safenote").innerHTML = tot||rate ? `Zinsen pro Jahr: <strong>${eur2(zj)}</strong> brutto · <strong>${eur2(zNetto)}</strong> nach Steuer (Abgeltungsteuer + Soli, 26,375 %, ohne Kirchensteuer, ${frei ? `Freibetrag ${eur(frei)}` : "ohne Freibetrag"}).<br>
     In 12 Monaten ca. <strong>${eur(fv)}</strong> (Konten mit Ø-Zins verzinst, ETFs / Fonds ohne Kursentwicklung, plus 12 × Sparrate, vor Steuern).` : "";
 
   // Ist-Verteilung nach Art + Rebalancing über die Sparrate (eigene Logik, unabhängig von 50/20/30)
@@ -1165,7 +1172,7 @@ function renderSafe(){
       const step = v => gRebal(v, tg, rate, mins);
       const mb = allIn ? 0 : gMonths(av, step, okArt);
       const mz = gMonths(av, step, v=>{ const T=v[0]+v[1]; return T>0 && Math.abs(v[0]/T - tg[0]) <= 0.005; });
-      spD = (allIn ? "" : `Zurück im Band nach ca. ${f(mb)}. `) + `Auf Ziel (±0,5 pp) nach ca. ${f(mz)} – Zinsen/Kurse nicht berücksichtigt, Aufteilung jeden Monat neu berechnen.`;
+      spD = (allIn ? "" : `Zurück im Band nach ca. ${f(mb)}. `) + (mz===0 ? `Bereits auf Ziel (±0,5 pp)` : `Auf Ziel (±0,5 pp) nach ca. ${f(mz)}`) + ` – Zinsen/Kurse nicht berücksichtigt, Aufteilung jeden Monat neu berechnen.`;
     }
     const lbl = `<strong>${esc(safeShort())} (Konto ${pct(zt*100,0)} · ETF / Fonds ${pct((1-zt)*100,0)}):</strong>`;
     spF = empty ? `ℹ️ ${lbl} Noch keine Werte erfasst – die Sparrate wird nach Ziel aufgeteilt.`
