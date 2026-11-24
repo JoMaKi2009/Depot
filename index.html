@@ -118,7 +118,7 @@
     --c5:#7a6fa8; --c6:#5b9aa0; --c7:#8a8a5c; --bartext:#ffffff; --okbg:#e7f5ec; --okline:#b9e0c6; --warnbg:#fdf1e3;
     --warnline:#f2d2a6; --infobg:#e6effa; --infoline:#b8cdea; background:#fff; color:#1d1d1b}
   body.pdf-mode nav, body.pdf-mode .toolbar, body.pdf-mode .add, body.pdf-mode .btn, body.pdf-mode .del,
-  body.pdf-mode .ico, body.pdf-mode #avUndoBox{display:none !important}
+  body.pdf-mode .ico, body.pdf-mode #avUndoBox, body.pdf-mode .resetfoot{display:none !important}
   body.pdf-mode .tab{display:block !important}
   .pdf-title{display:none}
   body.pdf-mode .pdf-title{display:block;font-size:18px;font-weight:700;margin:0 0 12px;padding-top:2px}
@@ -126,7 +126,7 @@
   body.pdf-mode main{max-width:820px;padding:0}
   @media print{
     body{background:#fff;color:#000}
-    nav,.toolbar,.add,.btn,.del,.ico,#avRebBox .note,#avUndoBox{display:none !important}
+    nav,.toolbar,.add,.btn,.del,.ico,#avRebBox .note,#avUndoBox,.resetfoot{display:none !important}
     .tab{display:block !important;break-before:page}
     .tab:first-of-type{break-before:auto}
     .tab::before{content:attr(data-title);display:block;font-size:18px;font-weight:700;margin:0 0 10px}
@@ -210,6 +210,18 @@
     .stand{text-align:left}
   }
   @media (display-mode: standalone){ body{-webkit-user-select:none;user-select:none} input,textarea{-webkit-user-select:text;user-select:text} }
+  .resetfoot{text-align:center;margin:28px 0 20px}
+  .resetfoot button{background:none;border:0;padding:8px;font:inherit;font-size:13px;color:var(--muted);text-decoration:underline;cursor:pointer}
+  #resetDlg{border:1px solid var(--line);border-radius:12px;background:var(--card);color:var(--text);padding:18px;width:min(420px,calc(100vw - 32px));max-width:none;box-sizing:border-box}
+  #resetDlg::backdrop{background:rgba(0,0,0,.45)}
+  #resetDlg h3{margin:0 0 8px;font-size:17px}
+  #resetDlg p{margin:0 0 12px;font-size:14px;line-height:1.45}
+  #resetDlg .acts{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;margin-top:14px}
+  #resetDlg .acts .btn{margin:0}
+  #resetDlg .btn.sec{background:var(--card);color:var(--text);border-color:var(--line)}
+  #resetDlg .btn.danger{background:var(--neg);border-color:var(--neg)}
+  #resetDlg .btn:disabled{opacity:.45;cursor:default}
+  #resetDlg input{width:100%;box-sizing:border-box;font:inherit;font-size:16px;padding:9px 10px;border:1px solid var(--line);border-radius:8px;background:var(--input);color:var(--text)}
 </style>
 </head>
 <body>
@@ -432,7 +444,29 @@
       <div class="scroll"><table id="rateTable"></table></div>
     </section>
   </section>
+  <div class="resetfoot"><button type="button" id="resetLink">Alle Daten zurücksetzen …</button></div>
 </main>
+<dialog id="resetDlg">
+  <div id="resetStep1">
+    <h3>Alle Daten zurücksetzen?</h3>
+    <p>Alle Eingaben in <b>allen Reitern</b> werden auf diesem Gerät gelöscht. Danach startet die App wie bei der ersten Nutzung.</p>
+    <p class="warn">Tipp: Vorher eine Sicherung exportieren – nur damit lässt sich der Stand wiederherstellen.</p>
+    <div class="acts">
+      <button type="button" class="btn sec" data-rs="cancel">Abbrechen</button>
+      <button type="button" class="btn sec" data-rs="export">⬇ Erst sichern</button>
+      <button type="button" class="btn danger" data-rs="next">Weiter</button>
+    </div>
+  </div>
+  <div id="resetStep2" hidden>
+    <h3>Wirklich löschen?</h3>
+    <p>Zur Bestätigung <b>LÖSCHEN</b> eintippen.</p>
+    <input id="resetIn" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="LÖSCHEN">
+    <div class="acts">
+      <button type="button" class="btn sec" data-rs="cancel">Abbrechen</button>
+      <button type="button" class="btn danger" data-rs="go" id="resetGo" disabled>Endgültig löschen</button>
+    </div>
+  </div>
+</dialog>
 <div id="updBar"><span>Neue Version verfügbar.</span><button class="btn" id="updBtn">Aktualisieren</button></div>
 
 <!-- html2pdf.js 0.10.1 (MIT) – liegt lokal bei, wird vom Service Worker offline vorgehalten -->
@@ -480,6 +514,7 @@ function loadCore(){
   const isNew = !Array.isArray(o.groups) && !CORE_DEF.some(g=>g.etfs.some(e=>o[e.wkn] !== undefined));
   cs.tab = o.tab && typeof o.tab==="object" ? o.tab : (isNew ? {t1:"Sparplan", t2:"ETF-Sparplan"} : {t1:"Altersvorsorge", t2:"Risikoreich"});
   const legacy = CORE_DEF.some(g=>g.etfs.some(e=>o[e.wkn] !== undefined));
+  if (o.zielRef && typeof o.zielRef === "object") cs.zielRef = o.zielRef;   // festgelegtes Ziel
   if (Array.isArray(o.groups)) cs.groups = o.groups;
   else if (!legacy){ cs.groups = []; cs.zielRef = {}; }          // neuer Nutzer: Vorlage wählen
   else {                                   // Übernahme aus Version 1 (feste WKN-Felder)
@@ -489,7 +524,7 @@ function loadCore(){
   return cs;
 }
 let CS = loadCore();
-if ((!CS.zielRef || typeof CS.zielRef !== "object") && CS.groups.length){        // festgelegtes Ziel: bisher fest 50/20/30
+if (!CS.zielRef || typeof CS.zielRef !== "object"){        // festgelegtes Ziel fehlt: bisher fest 50/20/30
   CS.zielRef = {};
   CS.groups.forEach((g,i)=>{ CS.zielRef[g.key] = CS.groups.length===ZIEL_DEF.length ? ZIEL_DEF[i] : (+g.ziel||0); });
 }
@@ -1333,6 +1368,24 @@ $("impFile").addEventListener("change", e=>{
     finally { e.target.value = ""; }
   };
   r.readAsText(f);
+});
+
+/* ---------- Alle Daten zurücksetzen ---------- */
+const resetOk = () => $("resetIn").value.trim().toUpperCase() === "LÖSCHEN";
+function resetStep(n){ $("resetStep1").hidden = n!==1; $("resetStep2").hidden = n!==2;
+  if (n===2){ $("resetIn").value = ""; $("resetGo").disabled = true; setTimeout(()=>$("resetIn").focus(), 50); } }
+$("resetLink").addEventListener("click", ()=>{ resetStep(1); $("resetDlg").showModal(); });
+$("resetIn").addEventListener("input", ()=>{ $("resetGo").disabled = !resetOk(); });
+$("resetIn").addEventListener("keydown", e=>{ if (e.key==="Enter" && resetOk()) $("resetGo").click(); });
+$("resetDlg").addEventListener("click", e=>{
+  const a = e.target.closest("[data-rs]")?.dataset.rs;
+  if (a==="cancel") $("resetDlg").close();
+  else if (a==="export") $("expJson").click();
+  else if (a==="next") resetStep(2);
+  else if (a==="go" && resetOk()){
+    try { Object.keys(localStorage).filter(k=>k.startsWith("depot-rechner")).forEach(k=>localStorage.removeItem(k)); } catch(err){}
+    location.reload();
+  }
 });
 
 $("expCsv").addEventListener("click", ()=>{
