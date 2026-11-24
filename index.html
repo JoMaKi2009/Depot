@@ -1123,17 +1123,22 @@ function renderSafe(){
   // Ist-Verteilung nach Art + Rebalancing über die Sparrate (eigene Logik, unabhängig von 50/20/30)
   const ART = [{k:"tg", l:"Konto", c:"var(--c5)"}, {k:"anl", l:"ETF / Fonds", c:"var(--c6)"}];
   const av  = ART.map(a=>S.filter(s=>(s.art||"tg")===a.k).reduce((x,s)=>x+s.saldo,0));
-  const zt  = P.ziel/100, tg = [zt, 1-zt], band = P.band/100, m = Math.round(P.min);
+  const zt  = P.ziel/100, band = P.band/100, m = Math.round(P.min);
+  // Art mit Ziel, aber noch ohne Position: wird übersprungen – die ganze Rate geht an die andere Art
+  const has  = ART.map(x=>X.safe.some(s=>s.art===x.k));
+  const miss = ART.findIndex((x,i)=>!has[i] && [zt,1-zt][i] > 0 && has.some(Boolean));
+  const skip = miss >= 0;
+  const tg   = skip ? has.map(h=>h?1:0) : [zt, 1-zt];      // wirksames Ziel
   bar("barSafeArt", ART.map((a,i)=>({l:a.l, v:av[i], c:a.c})));
   const okArt = (v)=> { const T=v[0]+v[1]; return T>0 && tg.every((z,i)=>Math.abs(v[i]/T - z) <= band + 1e-12); };
   $("safeIst").innerHTML = `<thead><tr><th>Art</th><th>Ist €</th><th>Ist %</th><th>Ziel %</th><th>Abw. pp</th><th>Abw. €</th><th>Status</th></tr></thead><tbody>` +
     ART.map((a,i)=>{ const p = tot? av[i]/tot : 0, d = p - tg[i], ok = Math.abs(d) <= band + 1e-12;
       return `<tr><td><span class="dot" style="background:${a.c}"></span>${a.l}</td><td>${eur(av[i])}</td><td>${tot?pct(p*100):"–"}</td>
         <td>${pct(tg[i]*100,0)}</td><td>${tot?pp(d*100):"–"}</td><td>${tot?signEur(av[i]-tg[i]*tot):"–"}</td>
-        <td class="${ok?"ok":"warn"}">${!tot?"–":ok?"✅ im Band":"⚠️ außerhalb"}</td></tr>`; }).join("") +
+        <td class="${skip&&!has[i]?"":ok?"ok":"warn"}">${skip&&!has[i]?"ℹ️ noch keine Position":!tot?"–":ok?"✅ im Band":"⚠️ außerhalb"}</td></tr>`; }).join("") +
     `</tbody><tfoot><tr><td>Gesamt</td><td>${eur(tot)}</td><td>${tot?pct(100):"–"}</td><td></td><td></td><td></td><td></td></tr></tfoot>`;
 
-  const mins = [m, m];
+  const mins = has.map(h=>h?m:0), nArt = has.filter(Boolean).length;   // Mindestrate nur für Arten mit Position
   let spHtml = "", spD = "", spF = "";
   SAFE_ALLOC = [];
   // Art mit Positionen, aber keiner als „wird bespart“ markiert (und mit Anspruch auf einen Betrag)
@@ -1148,8 +1153,8 @@ function renderSafe(){
     } else {
       spF = `<span class="empty">Sparrate gesamt eintragen – oder über das Rebalancing in der <a href="#" class="goto" data-goto="av">Übersicht Altersvorsorge</a> berechnen lassen.</span>`;
     }
-  } else if (rate < m*2){
-    spF = `<span class="err">Sparrate (${eur(rate)}) reicht nicht für 2 × Mindestrate (${eur(m*2)}).</span>`;
+  } else if (rate < m*nArt){
+    spF = `<span class="err">Sparrate (${eur(rate)}) reicht nicht für ${nArt} × Mindestrate (${eur(m*nArt)}).</span>`;
   } else if (noSpar.length){
     spF = `⚠️ <strong>${esc(safeShort())}:</strong> Bei ${noSpar.map(x=>x.l).join(" und ")} ist keine Position als „wird bespart“ markiert.`;
   } else {
@@ -1185,7 +1190,11 @@ function renderSafe(){
         : allIn ? (P.fine ? `✅ ${lbl} alles im Band – mit Feinausgleich die Beträge oben nutzen.` : `✅ ${lbl} alles im Band – Sparplan so lassen.`)
                 : `⚠️ ${lbl} Verteilung außerhalb des Bands – Sparplan auf die Beträge oben umstellen.`;
     spD += mNote;
-    if (!empty && !av[1] && zt < 1) spD += ` Hinweis: Noch kein ETF / Fonds erfasst – solange fließt die Rate (bis auf die Mindestrate) dorthin. Willst du vorerst nur das Konto besparen, setze das Ziel Konto auf 100 %.`;
+    if (skip){
+      const o = 1 - miss;
+      spD = mNote.trim();
+      spF = `ℹ️ ${lbl} Noch keine Position „${ART[miss].l}“ erfasst – die Sparrate geht vollständig auf „${ART[o].l}“. Das Ziel gilt, sobald eine Position „${ART[miss].l}“ erfasst ist.`;
+    } else if (!empty && has[1] && !av[1] && zt < 1) spD += ` Hinweis: ETF / Fonds hat noch keinen Wert – solange fließt die Rate (bis auf die Mindestrate) dorthin.`;
   }
   $("spTable").innerHTML = spHtml; $("spDauer").textContent = spD; $("spFazit").innerHTML = spF;
 
