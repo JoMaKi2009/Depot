@@ -163,6 +163,9 @@
   .zv-list{display:grid;grid-template-columns:1fr 110px;gap:8px 12px;align-items:center;margin-top:12px}
   .zv-list label{display:flex;align-items:center;gap:6px;margin:0}
   .zv-list input{margin:0}
+  .zv-list.n3{grid-template-columns:auto 1fr 80px 32px}
+  .zv-list.n3 .dot{margin:0}
+  .zv-list .del{margin:0}
   .zv-foot{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:12px}
   .zv-foot p{margin:0}
   #tab-safe.setup > section:not(#safeSetup), #tab-safe.setup > #safeNote, #tab-safe.setup > .tabhead{display:none !important}
@@ -326,7 +329,6 @@
     <section class="card">
       <h2>Aktuelle Werte (€)</h2>
       <div class="groups" id="groups"></div>
-      <button class="add" id="gadd">+ Baustein hinzufügen</button>
     </section>
     <section class="card">
       <h2>Übersicht Einzel-ETFs</h2>
@@ -642,7 +644,8 @@ function applyTemplate(i){
     etfs:[{depot:"", anbieter:"", wkn:"", typ:"", wert:0, spar:true}]}));
   CS.zielRef = {}; CS.groups.forEach(g=>CS.zielRef[g.key] = g.ziel);
   buildCore(); gaddState(); touch(); renderAll();
-  document.querySelector(`[data-c="${T.g[0][0] ? "depot" : "gname"}"][data-g="0"]`)?.focus();
+  if (T.g[0][0]) document.querySelector(`[data-c="depot"][data-g="0"]`)?.focus();
+  else coreZielEdit(true);                              // „Leer“: Bausteine oben benennen
 }
 function renderSetup(){
   const on = CS.groups.length === 0;
@@ -714,11 +717,11 @@ function buildCore(){
     const L = g.locked;
     const top = L
       ? `<div class="ehead"><div class="efields">
-           <h3 style="margin:2px 0 4px"><span class="dot" style="background:${CORECOL[gi]};margin:0 8px 0 0"></span>${esc(g.name)}</h3>
-         </div><div class="eact"><button class="ico" data-cedit="${gi}" title="Baustein bearbeiten (Name, Anbieter, WKN)" aria-label="Bearbeiten">✎</button></div></div>`
+           <h3 style="margin:2px 0 4px"><span class="dot" style="background:${CORECOL[gi]};margin:0 8px 0 0"></span>${esc(g.name||`Baustein ${gi+1}`)}</h3>
+         </div><div class="eact"><button class="ico" data-cedit="${gi}" title="ETFs bearbeiten (Depot, Anbieter, WKN, Typ)" aria-label="Bearbeiten">✎</button></div></div>`
       : `<div class="ehead"><div class="efields">
-           <label class="inl"><span><span class="dot" style="background:${CORECOL[gi]};margin-right:4px"></span>Name</span><input type="text" class="name" data-c="gname" data-g="${gi}" value="${esc(g.name)}" placeholder="Baustein"></label>
-         </div><div class="eact"><button class="ico okb" data-clock="${gi}" title="Bestätigen (Enter)" aria-label="Bestätigen">✓</button>${CS.groups.length>1?`<button class="del" data-gdel="${gi}" title="Baustein entfernen" aria-label="Baustein entfernen">×</button>`:""}</div></div>`;
+           <h3 style="margin:2px 0 4px"><span class="dot" style="background:${CORECOL[gi]};margin:0 8px 0 0"></span>${esc(g.name||`Baustein ${gi+1}`)}</h3>
+         </div><div class="eact"><button class="ico okb" data-clock="${gi}" title="Bestätigen (Enter)" aria-label="Bestätigen">✓</button></div></div>`;
     return `<div class="group">${top}
       ${g.etfs.map((e,ei)=>coreEtf(gi,ei,e,g.etfs.length,L)).join("")}
       ${L ? "" : `<button class="add small" data-cadd="${gi}">+ ETF</button>`}
@@ -729,8 +732,13 @@ buildCore();
 /* Karte „Zielverteilung“ Reiter 1: Ziel % je Baustein nur hier eingeben (Warnkarte zum festgelegten Ziel bleibt) */
 const cZielSum = () => CS.groups.reduce((a,g)=>a+(+g.ziel||0),0);
 function buildCoreZiel(){
-  $("coreZielList").innerHTML = CS.groups.map((g,gi)=>`<label for="czt-${gi}"><span class="dot" style="background:${CORECOL[gi]}"></span>${esc(g.name||`Baustein ${gi+1}`)}</label>
-    <input type="number" inputmode="decimal" min="0" max="100" step="1" id="czt-${gi}" data-czt="${gi}" value="${+g.ziel||0}" class="${zielChg(g)?"chg":""}" aria-label="Ziel % ${esc(g.name||"")}">`).join("");
+  $("coreZielList").className = "zv-list n3";
+  $("coreZielList").innerHTML = CS.groups.map((g,gi)=>`<span class="dot" style="background:${CORECOL[gi]}"></span>
+    <input type="text" class="name" id="czn-${gi}" data-czn="${gi}" value="${esc(g.name)}" placeholder="Name Baustein ${gi+1}" aria-label="Name Baustein ${gi+1}">
+    <input type="number" inputmode="decimal" min="0" max="100" step="1" id="czt-${gi}" data-czt="${gi}" value="${+g.ziel||0}" class="${zielChg(g)?"chg":""}" aria-label="Ziel % Baustein ${gi+1}">
+    ${CS.groups.length>1 ? `<button class="del" data-czdel="${gi}" title="Baustein entfernen" aria-label="Baustein entfernen">×</button>` : "<span></span>"}`).join("") +
+    `<button class="add small" id="czAdd" style="grid-column:1/-1">+ Baustein</button>`;
+  gaddState();
 }
 function renderCoreZiel(){
   const sum = cZielSum(), ok = Math.abs(sum-100) < 0.001;
@@ -743,7 +751,10 @@ function renderCoreZiel(){
   $("coreZielSum").innerHTML = ok ? `Summe ${pct(sum,0)} ✅` : `<span class="warn">Summe ${pct(sum,0)} – ${sum<100?`noch ${pct(100-sum,0)} verteilen`:`${pct(sum-100,0)} zu viel`}</span>`;
 }
 function coreZielEdit(on){
-  if (on){ buildCoreZiel(); $("coreZiel").classList.add("editing"); renderCoreZiel(); $("czt-0")?.focus(); return; }
+  if (on){ buildCoreZiel(); $("coreZiel").classList.add("editing"); renderCoreZiel();
+    (CS.groups.findIndex(g=>!(g.name||"").trim()) >= 0 ? $("czn-"+CS.groups.findIndex(g=>!(g.name||"").trim())) : $("czt-0"))?.focus(); return; }
+  const noName = CS.groups.findIndex(g=>!(g.name||"").trim());
+  if (noName >= 0){ $("czn-"+noName)?.focus(); return; }                     // jeder Baustein braucht einen Namen
   if (Math.abs(cZielSum()-100) >= 0.001){ renderCoreZiel(); return; }        // nur mit Summe 100 % schließen
   $("coreZiel").classList.remove("editing"); buildCore(); touch(); renderAll();
 }
@@ -753,8 +764,24 @@ document.addEventListener("click", ev=>{
 });
 document.addEventListener("input", ev=>{ const t = ev.target; if (t.dataset.czt === undefined) return;
   const g = CS.groups[+t.dataset.czt]; g.ziel = Math.max(0, +t.value || 0); t.classList.toggle("chg", zielChg(g)); });
-document.addEventListener("keydown", ev=>{ if (ev.key==="Enter" && ev.target.dataset.czt !== undefined){ ev.preventDefault(); coreZielEdit(false); } });
-function gaddState(){ const b=$("gadd"); b.disabled = CS.groups.length>=MAXG; b.textContent = CS.groups.length>=MAXG ? `Maximal ${MAXG} Bausteine` : "+ Baustein hinzufügen"; }
+document.addEventListener("input", ev=>{ const t = ev.target; if (t.dataset.czn === undefined) return;
+  CS.groups[+t.dataset.czn].name = t.value; });
+document.addEventListener("keydown", ev=>{ if (ev.key==="Enter" && (ev.target.dataset.czt !== undefined || ev.target.dataset.czn !== undefined)){ ev.preventDefault(); coreZielEdit(false); } });
+document.addEventListener("click", ev=>{
+  const del = ev.target.closest("[data-czdel]");
+  if (del){
+    const gi = +del.dataset.czdel, g = CS.groups[gi], sum = g.etfs.reduce((a,e)=>a+(+e.wert||0),0);
+    if (!confirm(`Baustein „${g.name||"ohne Namen"}“ mit ${g.etfs.length} ETF(s)${sum?` und ${eur(sum)}`:""} entfernen?`)) return;
+    CS.groups.splice(gi,1); buildCoreZiel(); buildCore(); touch(); renderAll(); return;
+  }
+  if (ev.target.closest("#czAdd")){
+    if (CS.groups.length >= MAXG) return;
+    CS.groups.push({key:"G"+Date.now().toString(36), name:"", ziel:0, locked:false,
+                    etfs:[{depot:"", anbieter:"", wkn:"", typ:"", wert:0, spar:true}]});
+    buildCoreZiel(); buildCore(); touch(); renderAll(); $("czn-"+(CS.groups.length-1))?.focus();
+  }
+});
+function gaddState(){ const b=$("czAdd"); if (!b) return; b.disabled = CS.groups.length>=MAXG; b.textContent = CS.groups.length>=MAXG ? `Maximal ${MAXG} Bausteine` : "+ Baustein hinzufügen"; }
 gaddState();
 $("rate").value = CS.rate || ""; $("tabT1").value = CS.tab.t1 || ""; $("tabT2").value = CS.tab.t2 || ""; $("min").value = CS.min; $("band").value = CS.band; $("fine").checked = CS.fine;
 
@@ -762,12 +789,11 @@ function coreLock(gi, on){
   const g = CS.groups[gi];
   if (on){
     const q = (c,e) => document.querySelector(`[data-c="${c}"][data-g="${gi}"]${e!==undefined?`[data-e="${e}"]`:""}`);
-    if (!(g.name||"").trim()){ q("gname")?.focus(); return; }
     const miss = g.etfs.findIndex(e=>!(e.wkn||"").trim());
     if (miss >= 0){ q("wkn",miss)?.focus(); return; }
   }
   g.locked = on; buildCore(); touch(); renderAll();
-  if (!on) document.querySelector(`[data-c="gname"][data-g="${gi}"]`)?.focus();
+  if (!on) document.querySelector(`[data-c="depot"][data-g="${gi}"]`)?.focus();
 }
 document.addEventListener("input", ev=>{          // läuft vor dem allgemeinen Handler (der danach renderAll aufruft)
   const t = ev.target, c = t.dataset.c; if (!c) return;
