@@ -231,7 +231,7 @@
   <nav>
     <button data-tab="daten"><span class="t1">ℹ️</span>Info</button>
     <button data-tab="vorsorge" class="active" id="navCore"><span class="t1">Altersvorsorge</span>Risikoreich</button>
-    <button data-tab="safe"><span class="t1">Altersvorsorge</span>Risikoarm</button>
+    <button data-tab="safe" id="navSafe"><span class="t1">Altersvorsorge</span>Risikoarm</button>
     <button data-tab="av"><span class="t1">Übersicht</span>Altersvorsorge</button>
     <button data-tab="etfs"><span class="t1">Spielgeld</span>ETFs</button>
     <button data-tab="spiel"><span class="t1">Spielgeld</span>Aktien</button>
@@ -335,8 +335,19 @@
 
   <!-- ============ VORSORGE RISIKOARM ============ -->
   <section class="tab" id="tab-safe" data-title="Altersvorsorge – Risikoarm">
-    <div class="pdf-title">Altersvorsorge – Risikoarm</div>
-    <p class="note" style="margin:0 0 14px">Risikoarmer Teil der Altersvorsorge – Tagesgeld/Konten und Anleihen-ETFs. Ausgleich nur über die Sparrate, unabhängig vom 50/20/30-Teil. Name und Anbieter bzw. WKN mit ✓ oder Enter bestätigen, mit ✎ wieder bearbeiten.</p>
+    <div class="pdf-title" id="pdfSafe">Altersvorsorge – Risikoarm</div>
+    <div class="tabhead" id="safeHead">
+      <div class="th-view"><div><span class="th1" id="sth1"></span><span class="th2" id="sth2"></span></div>
+        <button class="ico" id="sthEdit" title="Reiter umbenennen" aria-label="Reiter umbenennen">✎</button></div>
+      <div class="th-edit">
+        <div class="efields">
+          <label class="inl">Oberzeile<input type="text" id="safeT1" maxlength="24" placeholder="z. B. Altersvorsorge"></label>
+          <label class="inl">Name<input type="text" id="safeT2" maxlength="24" placeholder="z. B. Sicherheitsbaustein"></label>
+        </div>
+        <div class="eact"><button class="ico okb" id="sthOk" title="Bestätigen (Enter)" aria-label="Bestätigen">✓</button></div>
+      </div>
+    </div>
+    <p class="note" style="margin:0 0 14px">Sicherer Teil – Konten (z. B. Tagesgeld) und Anleihen-ETFs. Ausgleich nur über die Sparrate; die anderen Reiter fließen hier <strong>nicht</strong> ein. Name und Anbieter bzw. WKN mit ✓ oder Enter bestätigen, mit ✎ wieder bearbeiten.</p>
     <section class="card">
       <h2>Konten &amp; Anlagen (€)</h2>
       <div class="groups" id="safes"></div>
@@ -874,9 +885,29 @@ function head(k,i,name,what){
     <button class="del" data-del="${k}" data-i="${i}" title="${what} entfernen" aria-label="${what} entfernen">×</button></div>`;
 }
 // alte Einträge ("ETF A (WKN …)") auf Name + WKN umstellen
+if (!X.safeTab || typeof X.safeTab !== "object")          // Reitername Risikoarm: bestehende Daten behalten den alten Namen
+  X.safeTab = Array.isArray(X.safe) ? {t1:"Altersvorsorge", t2:"Risikoarm"} : {t1:"Sparplan", t2:"Sicherheitsbaustein"};
 if (!Array.isArray(X.safe)) X.safe = [{name:"Tagesgeld", wkn:"DKB", saldo:0, zins:4, rate:0, locked:true}];
 if (X.tax === undefined) X.tax = 26.375;
 [...X.etfs, ...X.stocks, ...X.safe].forEach(e=>{ if (e.wkn===undefined){ e.wkn=""; e.name=(e.name||"").replace(/\s*\(WKN …\)\s*$/,""); } e.locked=!!e.locked; });
+const safeName  = () => [X.safeTab.t1, X.safeTab.t2].map(x=>(x||"").trim()).filter(Boolean).join(" – ") || "Sicherheitsbaustein";
+const safeShort = () => (X.safeTab.t2||"").trim() || (X.safeTab.t1||"").trim() || "Sicherheitsbaustein";
+function renderSafeName(){
+  $("sth1").textContent = (X.safeTab.t1||"").trim(); $("sth2").textContent = safeShort();
+  $("navSafe").innerHTML = `<span class="t1">${esc((X.safeTab.t1||"").trim()) || "&nbsp;"}</span>${esc(safeShort())}`;
+  $("tab-safe").dataset.title = safeName(); if (!document.body.classList.contains("pdf-mode")) $("pdfSafe").textContent = safeName();
+}
+$("safeT1").value = X.safeTab.t1 || ""; $("safeT2").value = X.safeTab.t2 || "";
+function safeHeadEdit(on){
+  if (!on && !$("safeT2").value.trim() && !$("safeT1").value.trim()){ $("safeT2").focus(); return; }
+  $("safeHead").classList.toggle("editing", on);
+  if (on) $("safeT2").focus(); else { touch(); renderAll(); }
+}
+document.addEventListener("click", ev=>{
+  if (ev.target.closest("#sthEdit")) safeHeadEdit(true);
+  else if (ev.target.closest("#sthOk")) safeHeadEdit(false);
+});
+document.addEventListener("keydown", ev=>{ if (ev.key==="Enter" && (ev.target.id==="safeT1"||ev.target.id==="safeT2")){ ev.preventDefault(); safeHeadEdit(false); } });
 const WHAT = {etfs:"ETF", stocks:"Aktie", safe:"Position"};
 const SUB  = {etfs:"WKN", stocks:"WKN", safe:"Anbieter"};                 // Beschriftung 2. Zeile
 const PH   = {etfs:"Name des ETFs", stocks:"Name der Aktie", safe:"z. B. Tagesgeld, Anleihen-ETF"};
@@ -956,6 +987,7 @@ function renderExtra(){
   X.avReb = $("avReb").checked;
   X.avMinArm = Math.max(0, num("avMinArm"));
   X.avRate = Math.max(0, Math.round(num("avRate")));
+  X.safeTab = {t1:$("safeT1").value, t2:$("safeT2").value}; renderSafeName();
   save(XSTORE, X);
 
   // Spielgeld ETFs
@@ -1061,7 +1093,7 @@ function renderSafe(){
       spHtml = `<thead><tr><th>Art</th><th>Betrag</th><th>Anteil</th></tr></thead><tbody>` +
         ART.map(x=>`<tr><td><span class="dot" style="background:${x.c}"></span><strong>${x.l}</strong></td><td class="big">${eur(0)}</td><td>–</td></tr>`).join("") +
         `</tbody><tfoot><tr><td>Summe</td><td>${eur(0)}</td><td></td></tr></tfoot>`;
-      spF = `ℹ️ <strong>Risikoarm:</strong> Sparrate aktuell 0 € – übernommen aus dem Rebalancing der Altersvorsorge gesamt. Der risikoarme Teil liegt über dem Zielkorridor und wird vorerst nicht bespart; die Gesamtrate fließt in den risikoreichen Teil. <a href="#" class="goto" data-goto="av">→ Übersicht Altersvorsorge</a>`;
+      spF = `ℹ️ <strong>${esc(safeShort())}:</strong> Sparrate aktuell 0 € – übernommen aus dem Rebalancing in der Übersicht Altersvorsorge. Dieser Teil liegt über dem Zielkorridor und wird vorerst nicht bespart; die Gesamtrate fließt in „${esc(coreShort())}“. <a href="#" class="goto" data-goto="av">→ Übersicht Altersvorsorge</a>`;
     } else {
       spF = `<span class="empty">Sparrate gesamt eintragen – oder über das Rebalancing in der <a href="#" class="goto" data-goto="av">Übersicht Altersvorsorge</a> berechnen lassen.</span>`;
     }
@@ -1081,7 +1113,7 @@ function renderSafe(){
       const mz = gMonths(av, step, v=>{ const T=v[0]+v[1]; return T>0 && Math.abs(v[0]/T - tg[0]) <= 0.005; });
       spD = (allIn ? "" : `Zurück im Band nach ca. ${f(mb)}. `) + `Auf Ziel (±0,5 pp) nach ca. ${f(mz)} – Zinsen/Kurse nicht berücksichtigt, Aufteilung jeden Monat neu berechnen.`;
     }
-    const lbl = `<strong>Risikoarm (Tagesgeld ${pct(zt*100,0)} / Anleihen ${pct((1-zt)*100,0)}):</strong>`;
+    const lbl = `<strong>${esc(safeShort())} (Tagesgeld ${pct(zt*100,0)} / Anleihen ${pct((1-zt)*100,0)}):</strong>`;
     spF = allIn ? (P.fine ? `✅ ${lbl} alles im Band – mit Feinausgleich die Beträge oben nutzen.` : `✅ ${lbl} alles im Band – Sparplan so lassen.`)
                 : `⚠️ ${lbl} Verteilung außerhalb des Bands – Sparplan auf die Beträge oben umstellen.`;
     if (!av[1] && zt < 1) spD += ` Hinweis: Noch kein Anleihen-ETF erfasst – solange fließt die Rate (bis auf die Mindestrate) dorthin. Willst du vorerst nur Tagesgeld besparen, setze das Ziel Tagesgeld auf 100 %.`;
@@ -1129,7 +1161,7 @@ function renderAll(){
   const inCorr  = r => r >= zLo-1e-9 && r <= zHi+1e-9;
   const mix = [
     {l:coreLabel(), v:CORE.total, c:"var(--c1)"},
-    {l:"Risikoarm",              v:sf.total,   c:"var(--c5)"},
+    {l:esc(safeShort()),         v:sf.total,   c:"var(--c5)"},
   ];
   const rIst = vorsorge ? CORE.total/vorsorge : 0;
 
@@ -1163,7 +1195,7 @@ function renderAll(){
   AV_SUGGEST = null;
   const rateMix = [
     {l:coreLabel(), v:rCur[0], c:"var(--c1)"},
-    {l:"Risikoarm",              v:rCur[1], c:"var(--c5)"},
+    {l:esc(safeShort()),         v:rCur[1], c:"var(--c5)"},
   ];
   const f = k => k===null ? "mehr als 50 Jahre" : (k===1 ? "1 Monat" : k+" Monaten");
   let note = "", fz = "";
@@ -1225,7 +1257,7 @@ function renderAll(){
 
   const topf = [
     {l:esc(coreName()), v:CORE.total,    c:"var(--c1)"},
-    {l:"Altersvorsorge – Risikoarm",   v:sf.total,      c:"var(--c5)"},
+    {l:esc(safeName()),   v:sf.total,      c:"var(--c5)"},
     {l:"Spielgeld ETFs",     v:ex.etfTotal,   c:"var(--c2)"},
     {l:"Spielgeld Aktien",   v:ex.stockTotal, c:"var(--c3)"},
   ];
@@ -1234,7 +1266,7 @@ function renderAll(){
 
   $("rateTable").innerHTML = `<thead><tr><th>Sparplan</th><th>€ / Monat</th><th>€ / Jahr</th></tr></thead><tbody>
     <tr><td>${esc(coreName())}</td><td>${eur(CORE.rate)}</td><td>${eur(CORE.rate*12)}</td></tr>
-    <tr><td>Altersvorsorge – Risikoarm</td><td>${eur(sf.rate)}</td><td>${eur(sf.rate*12)}</td></tr>
+    <tr><td>${esc(safeName())}</td><td>${eur(sf.rate)}</td><td>${eur(sf.rate*12)}</td></tr>
     <tr><td>Spielgeld ETFs (Scalable)</td><td>${eur(ex.etfRate)}</td><td>${eur(ex.etfRate*12)}</td></tr>
     </tbody><tfoot><tr><td>Gesamt</td><td>${eur(rateTotal)}</td><td>${eur(rateTotal*12)}</td></tr></tfoot>`;
 
@@ -1444,9 +1476,9 @@ $("expCsv").addEventListener("click", ()=>{
     n(+e.wert||0), cT?n((+e.wert||0)/cT*100):"", "", n(CORE.etfAlloc ? CORE.etfAlloc[i][j] : 0)])));
   // Risikoarm
   const sT = X.safe.reduce((a,s)=>a+(s.saldo||0),0);
-  X.safe.forEach((s,i)=>rows.push(["Altersvorsorge – Risikoarm", itemName("safe",s,i), s.wkn||"", s.art==="anl"?"Anleihen-ETF":"Tagesgeld / Konto",
+  X.safe.forEach((s,i)=>rows.push([safeName(), itemName("safe",s,i), s.wkn||"", s.art==="anl"?"Anleihen-ETF":"Tagesgeld / Konto",
     n(s.saldo), sT?n((s.saldo||0)/sT*100):"", s.art==="anl"?"":n(s.zins), ""]));
-  [...document.querySelectorAll("#spTable tbody tr")].forEach(tr=>rows.push(["Altersvorsorge – Risikoarm", "Sparrate "+tr.children[0].textContent.trim(), "", "", "", "", "", tr.children[1].textContent.replace(/[^\d]/g,"")]));
+  [...document.querySelectorAll("#spTable tbody tr")].forEach(tr=>rows.push([safeName(), "Sparrate "+tr.children[0].textContent.trim(), "", "", "", "", "", tr.children[1].textContent.replace(/[^\d]/g,"")]));
   // Spielgeld ETFs
   const eT = X.etfs.reduce((a,e)=>a+e.comd+e.scal,0);
   X.etfs.forEach((e,i)=>{
@@ -1458,7 +1490,7 @@ $("expCsv").addEventListener("click", ()=>{
   X.stocks.forEach((s,i)=>rows.push(["Spielgeld Aktien", itemName("stocks",s,i), s.wkn||"", [s.anz?`${n(s.anz)} Stück`:"", s.kauf?`Kaufkurs ${n(s.kauf)} €`:""].filter(Boolean).join(", "), n(s.wert), aT?n((s.wert||0)/aT*100):"", "", ""]));
   // Zusammenfassung
   rows.push([]); rows.push(["Zusammenfassung","Topf","","","Wert (€)","Anteil Gesamtvermögen (%)","","Sparrate (€/Monat)"]);
-  const tops = [[coreName(), cT, CORE.rate], ["Altersvorsorge – Risikoarm", sT, X.safePlan.gesamt||0],
+  const tops = [[coreName(), cT, CORE.rate], [safeName(), sT, X.safePlan.gesamt||0],
                 ["Spielgeld ETFs", eT, X.etfs.reduce((a,e)=>a+e.rate,0)], ["Spielgeld Aktien", aT, 0]];
   const G = tops.reduce((a,t)=>a+t[1],0);
   tops.forEach(t=>rows.push(["Zusammenfassung", t[0], "", "", n(t[1]), G?n(t[1]/G*100):"", "", n(t[2])]));
