@@ -345,7 +345,7 @@
     </section>
     <section class="card">
       <h2>Ist-Verteilung</h2>
-      <div class="bar" id="barCore"></div>
+      <div id="ringCore"></div>
       <div class="scroll"><table id="ist"></table></div>
       <p class="note" id="distnote"></p>
     </section>
@@ -414,7 +414,7 @@
     </section>
     <section class="card">
       <h2>Ist-Verteilung</h2>
-      <div class="bar" id="barSafeArt"></div>
+      <div id="ringSafeArt"></div>
       <div class="scroll"><table id="safeIst"></table></div>
     </section>
     <section class="card">
@@ -468,7 +468,7 @@
     </section>
     <section class="card av-hide">
       <h2>Ist-Verteilung Vermögen</h2>
-      <div class="bar" id="barMix"></div>
+      <div id="ringMix"></div>
       <div class="scroll"><table id="mixTable"></table></div>
     </section>
     <section class="card">
@@ -927,7 +927,7 @@ function renderCore(){
     `</tbody><tfoot><tr><td>Gesamt</td><td></td><td></td><td>${eur(T)}</td><td>${T?pct(100,1):"–"}</td><td></td><td></td></tr></tfoot>`;
 
   const ist=$("ist"), spar=$("spar"), fazit=$("fazit"), dauer=$("dauer");
-  bar("barCore", GROUPS.map((g,i)=>({l:`${g.name} (Ziel ${Math.round(g.ziel*1000)/10} %)`, v:vals[i], c:CORECOL[i]})));
+  ring("ringCore", GROUPS.map((g,i)=>({l:g.name, v:vals[i], c:CORECOL[i]})), "Baustein", "Bausteine", `Toleranzband ± ${(CS.band||0).toLocaleString("de-DE")} pp je Baustein.`);
 
   if (T<=0){ ist.innerHTML=""; spar.innerHTML=""; dauer.textContent=""; $("distnote").textContent="";
     fazit.innerHTML='<span class="err">Bitte Werte eingeben.</span>'; return; }
@@ -1450,7 +1450,7 @@ function renderSafe(){
   // Ist-Verteilung je Baustein + Rebalancing über die Sparrate
   const zs = G.map(g=>+g.ziel||0), zSum = zs.reduce((a,b)=>a+b,0), tg = zs.map(z=>z/100);
   const sumOk = Math.abs(zSum-100) < 0.001;
-  bar("barSafeArt", G.map((g,gi)=>({l:`${g.name} (Ziel ${zs[gi]} %)`, v:vals[gi], c:SCOL(gi)})));
+  ring("ringSafeArt", G.map((g,gi)=>({l:g.name, v:vals[gi], c:SCOL(gi)})), "Baustein", "Bausteine", `Toleranzband ± ${(P.band||0).toLocaleString("de-DE")} pp je Baustein.`);
   const okG = v => { const T=v.reduce((a,b)=>a+b,0); return T>0 && tg.every((z,i)=>Math.abs(v[i]/T - z) <= band + 1e-12); };
   $("safeIst").innerHTML = `<thead><tr><th>Baustein</th><th>Ist €</th><th>Ist %</th><th>Ziel %</th><th>Abw. pp</th><th>Abw. €</th><th>Status</th></tr></thead><tbody>` +
     G.map((g,i)=>{ const p = tot? vals[i]/tot : 0, d = p - tg[i], ok = Math.abs(d) <= band + 1e-12;
@@ -1536,7 +1536,7 @@ function bar(id, parts){
   leg.innerHTML = T ? parts.map(p=>`<span><span class="dot" style="background:${p.c}"></span>${esc(p.l)} <strong>${pct(p.v/T*100,1)}</strong></span>`).join("") : "";
 }
 /* Ring (Donut) für die Zielverteilung: Segmente mit 2px Lücke, Mitte „x Bausteine“, Legende mit Name und % */
-function ring(id, parts, one, many){
+function ring(id, parts, one, many, note){
   const T = parts.reduce((a,p)=>a+p.v,0);
   if (!T){ $(id).innerHTML = ""; return; }
   const R = 52, W = 18, C = 2*Math.PI*R, gap = parts.filter(p=>p.v>0).length > 1 ? 2 : 0;
@@ -1548,7 +1548,8 @@ function ring(id, parts, one, many){
   const n = parts.length, fmt = v => (Math.round(v*10)/10).toLocaleString("de-DE") + " %";
   $(id).innerHTML = `<div class="ring-wrap"><svg viewBox="0 0 140 140" role="img" aria-label="Zielverteilung">${arcs}
       <text class="rn" x="70" y="68" text-anchor="middle">${n}</text><text class="rl" x="70" y="88" text-anchor="middle">${n===1?one:many}</text></svg>
-    <div class="ring-leg">${parts.map(p=>`<div><span class="dot" style="background:${p.c}"></span><span class="n">${esc(p.l)}</span><strong>${fmt(p.v/T*100)}</strong></div>`).join("")}</div></div>`;
+    <div class="ring-leg">${parts.map(p=>`<div><span class="dot" style="background:${p.c}"></span><span class="n">${esc(p.l)}</span><strong>${fmt(p.v/T*100)}</strong></div>`).join("")}</div></div>` +
+    (note ? `<p class="note">${note}</p>` : "");
 }
 function shareTable(id, head, parts){
   const T = parts.reduce((a,p)=>a+p.v,0);
@@ -1597,7 +1598,7 @@ function renderAll(){
   $("avApplyNote").innerHTML = `Übernehmen trägt die beiden Beträge als „Sparrate gesamt“ in ${nA} und ${nB} ein – dort wird dann wie gewohnt innerhalb des Teils aufgeteilt.`;
 
   // Ist-Verteilung Vermögen
-  bar("barMix", mix);
+  ring("ringMix", mix.map((m,i)=>({...m, l:i===0?coreShort():safeShort()})), "Baustein", "Bausteine", `Toleranzband ${bandTxt} je Baustein.`);
   $("mixTable").innerHTML = `<thead><tr><th>Teil</th><th>Wert</th><th>Ist %</th><th>Ziel %</th><th>Band</th><th>Abw. pp</th><th>Abw. €</th><th>Status</th></tr></thead><tbody>` +
     mix.map((m,r)=>{ const ist = vorsorge ? m.v/vorsorge : 0, z = r===0 ? zZ : 1-zZ;
       return `<tr><td><span class="dot" style="background:${m.c}"></span>${m.l}</td><td>${eur(m.v)}</td>
