@@ -34,7 +34,7 @@ Sprache der App und der Kommunikation: **Deutsch**.
 0. **Info** (`#tab-daten`) – Infokasten, Sicherung (Export/Import, letzte Sicherung), CSV/PDF, „Alle Daten zurücksetzen“
 1. **Risikoreich** (`#tab-vorsorge`, Speicherschlüssel `depot-rechner-v1`) – Name frei wählbar – *generisch überarbeitet, fertig*
 2. **Risikoarm** (`#tab-safe`) – Konten und ETFs/Fonds – Name frei wählbar – *generisch überarbeitet, fertig*
-3. **Übersicht Altersvorsorge** (`#tab-av`) – Verhältnis Reiter 1 / Reiter 2, optionales Rebalancing der Gesamtrate – Name frei wählbar – *in Arbeit (Schritte A, B fertig)*
+3. **Übersicht Altersvorsorge** (`#tab-av`) – Verhältnis Reiter 1 / Reiter 2, optionales Rebalancing der Gesamtrate – Name frei wählbar – *in Arbeit (Schritte A–C fertig)*
 4. **Spielgeld ETFs** (`#tab-etfs`) – nur Erfassung, Broker-Spalten, Obergrenze
 5. **Spielgeld Aktien** (`#tab-spiel`) – nur Erfassung, Einstand, Obergrenze
 6. **Übersicht Gesamt** (`#tab-gesamt`)
@@ -49,6 +49,7 @@ Reiter 2–6 speichern unter `depot-rechner-extra-v1` (Objekt `X`).
 - Mehrere besparte ETFs in einem Baustein: Betrag wird **gleichmäßig** aufgeteilt
   (eine Gewichtung wurde bewusst verworfen – zu unübersichtlich). Gilt ebenso für mehrere
   besparte Positionen einer Art in Reiter 2.
+- Reiter 3 (Verhältnis Reiter 1 / Reiter 2): ebenfalls Ziel ± Toleranzband, optional Feinausgleich.
 
 ## Stand Reiter 1 „Risikoreich“ (abgeschlossen)
 - Beliebig viele Bausteine (max. 8), Farben aus `PALETTE` rotierend.
@@ -109,8 +110,11 @@ Reiter 2–6 speichern unter `depot-rechner-extra-v1` (Objekt `X`).
 - **B (fertig):** Reitername `X.avTab` (t1/t2) über ✎ (`avName()`/`avShort()`/`avLink()`). Bestehende Daten
   (`X.mixZiel` gespeichert): „Übersicht / Altersvorsorge“, neue Nutzer: „Übersicht / Sparpläne“.
   Wirkt auf Reiterleiste, PDF, Kennzahl, Fazit, Links in Reiter 1/2 und „Anteil …“ in Reiter 6.
-- Korridor nur vom Ziel nach oben (Ziel … darf tendieren bis) – fachliche Regel, unverändert.
+- **C (fertig):** Ziel ± Toleranzband wie Reiter 1/2: `X.mixZiel` (% für Reiter 1, Rest Reiter 2; `null` = noch
+  nicht festgelegt → ℹ️-Hinweis, kein Vorschlag), `X.mixBand` (± pp, Standard 5), `X.mixFine` (Feinausgleich).
+  Im Band Aufteilung nach Ziel (`gStd`), außerhalb oder mit Feinausgleich Lücken zum Ziel füllen (`gRebal`).
+  Migration: altes `mixZiel`/`mixMax` → Mitte ± halbe Breite (60/70 → 65 ± 5), `mixMax` wird gelöscht.
+  Neue Nutzer: Ziel leer, Band 5. (Früher: Korridor nur vom Ziel nach oben – mit Nutzerin/Nutzer geändert.)
 
 ## Nächster Schritt
-Reiter 3: **C** neutrale Startwerte für Ziel/Obergrenze bei neuen Nutzern (leer mit Hinweis oder z. B. 50/60 –
-Rückfrage offen), **D** ℹ️-Hinweis im leeren Zustand mit Links zu Reiter 1/2.
+Reiter 3: **D** ℹ️-Hinweis im leeren Zustand (noch keine Werte/Sparraten in Reiter 1/2) mit Links dorthin.
