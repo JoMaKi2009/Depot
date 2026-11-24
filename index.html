@@ -350,14 +350,14 @@
     </div>
     <section class="card st-info" id="safeSetup" style="display:none">
       <h2 style="color:var(--text)">Los geht's – wie ist dein sicherer Teil aufgebaut?</h2>
-      <p class="note" style="margin:0 0 12px;color:var(--text)">Wähl eine Vorlage. Namen, Anbieter, WKNs und das Ziel kannst du danach jederzeit ändern, Positionen hinzufügen oder entfernen.</p>
+      <p class="note" style="margin:0 0 12px;color:var(--text)">Wähl eine Vorlage. Namen, Ziele, Anbieter und WKNs kannst du danach jederzeit ändern, Bausteine und Positionen hinzufügen oder entfernen.</p>
       <div class="tpls" id="safeTpls"></div>
     </section>
-    <p class="note" style="margin:0 0 14px" id="safeNote">Sicherer Teil – Konten (z. B. Tagesgeld, Festgeld) und ETFs / Fonds (z. B. Anleihen- oder Geldmarkt-ETF). Ausgleich nur über die Sparrate; die anderen Reiter fließen hier <strong>nicht</strong> ein. Name und Anbieter bzw. WKN mit ✓ oder Enter bestätigen, mit ✎ wieder bearbeiten.</p>
+    <p class="note" style="margin:0 0 14px" id="safeNote">Sicherer Teil – Konten (z. B. Tagesgeld, Festgeld) und ETFs / Fonds (z. B. Anleihen- oder Geldmarkt-ETF). Ausgleich nur über die Sparrate; die anderen Reiter fließen hier <strong>nicht</strong> ein. Bausteine mit ✎ bearbeiten, mit ✓ oder Enter bestätigen.</p>
     <section class="card">
-      <h2>Konten &amp; Anlagen (€)</h2>
+      <h2>Bausteine &amp; Positionen (€)</h2>
       <div class="groups" id="safes"></div>
-      <button class="add" data-add="safe">+ Position hinzufügen</button>
+      <button class="add" id="sgadd">+ Baustein hinzufügen</button>
     </section>
     <section class="card">
       <h2>Übersicht Einzelpositionen</h2>
@@ -378,8 +378,7 @@
       <h2>Sparplan</h2>
       <div class="row">
         <div><label for="spG">Sparrate gesamt (€/Monat)</label><input type="number" inputmode="decimal" id="spG" min="0" step="1" placeholder="0"></div>
-        <div><label for="spZiel">Ziel Konto (%) – Rest ETF / Fonds</label><input type="number" inputmode="decimal" id="spZiel" min="0" max="100" step="1" value="50"></div>
-        <div><label for="spMin">Mindestrate je Art (€)</label><input type="number" inputmode="decimal" id="spMin" min="0" step="1" value="0"></div>
+        <div><label for="spMin">Mindestrate je Baustein (€)</label><input type="number" inputmode="decimal" id="spMin" min="0" step="1" value="0"></div>
         <div><label for="spBand">Toleranzband (± Prozentpunkte)</label><input type="number" inputmode="decimal" id="spBand" min="0" step="0.5" value="5"></div>
       </div>
       <p style="margin:14px 0 0"><label class="check"><input type="checkbox" id="spFine"> Auch innerhalb des Bands Richtung Ziel ausgleichen</label></p>
@@ -900,13 +899,21 @@ function head(k,i,name,what){
 // alte Einträge ("ETF A (WKN …)") auf Name + WKN umstellen
 if (!X.safeTab || typeof X.safeTab !== "object")          // Reitername Risikoarm: bestehende Daten behalten den alten Namen
   X.safeTab = Array.isArray(X.safe) ? {t1:"Altersvorsorge", t2:"Risikoarm"} : {t1:"Sparplan", t2:"Sicherheitsbaustein"};
-if (!Array.isArray(X.safe)) X.safe = [];                  // neuer Nutzer: Vorlage wählen (früher fest „Tagesgeld / DKB“)
-if (X.safe.some(s=>s.spar===undefined)){                        // „wird bespart“ neu: je Art die erste Position
-  const seen = {}; X.safe.forEach(s=>{ const art = s.art==="anl" ? "anl" : "tg";
-    if (s.spar===undefined) s.spar = !seen[art]; seen[art] = true; });
+// Reiter 2 als Bausteine (X.sg) wie Reiter 1. Alter Stand (X.safe = flache Liste + Ziel „Konto %“)
+// wird übernommen: je vorhandener Art ein Baustein „Konto“ bzw. „ETF / Fonds“ mit dem bisherigen Ziel.
+if (!Array.isArray(X.sg)){
+  const old = Array.isArray(X.safe) ? X.safe : [], zt = +(X.safePlan && X.safePlan.ziel);
+  const by = {tg:[], anl:[]};
+  old.forEach(o=>{ const art = o.art==="anl" ? "anl" : "tg";
+    by[art].push({name:(o.name||"").replace(/\s*\(WKN …\)\s*$/,""), wkn:o.wkn||"", art, saldo:+o.saldo||0, zins:+o.zins||0, spar:o.spar}); });
+  Object.values(by).forEach(list=>list.forEach((q,i)=>{ if (q.spar===undefined) q.spar = i===0; q.spar = !!q.spar; }));
+  const both = by.tg.length && by.anl.length, z = isFinite(zt) ? zt : 50;
+  X.sg = [["tg","Konto", both ? z : 100], ["anl","ETF / Fonds", both ? 100-z : 100]]
+    .filter(([k])=>by[k].length).map(([k,name,ziel],i)=>({key:`S${i}${Date.now().toString(36)}`, name, ziel, locked:true, pos:by[k]}));
+  delete X.safe; if (X.safePlan) delete X.safePlan.ziel;
 }
 if (X.tax === undefined) X.tax = 26.375;
-[...X.etfs, ...X.stocks, ...X.safe].forEach(e=>{ if (e.wkn===undefined){ e.wkn=""; e.name=(e.name||"").replace(/\s*\(WKN …\)\s*$/,""); } e.locked=!!e.locked; });
+[...X.etfs, ...X.stocks].forEach(e=>{ if (e.wkn===undefined){ e.wkn=""; e.name=(e.name||"").replace(/\s*\(WKN …\)\s*$/,""); } e.locked=!!e.locked; });
 const safeName  = () => [X.safeTab.t1, X.safeTab.t2].map(x=>(x||"").trim()).filter(Boolean).join(" – ") || "Sicherheitsbaustein";
 const safeShort = () => (X.safeTab.t2||"").trim() || (X.safeTab.t1||"").trim() || "Sicherheitsbaustein";
 function renderSafeName(){
@@ -968,39 +975,123 @@ function buildStocks(){
     <div class="sum" id="ssum${i}"></div></div>`).join("")
     : `<p class="empty">Noch keine Aktien erfasst.</p>`;
 }
-function buildSafe(){
-  $("safes").innerHTML = X.safe.length ? X.safe.map((s,i)=>`<div class="group">
-    ${headItem("safe",i,s)}
-    <label>Art<select data-k="safe" data-i="${i}" data-f="art">
-      <option value="tg"${s.art!=="anl"?" selected":""}>Konto (Tagesgeld, Festgeld)</option>
-      <option value="anl"${s.art==="anl"?" selected":""}>ETF / Fonds (z. B. Anleihen-ETF)</option></select></label>
-    <div class="cetf${s.spar?" sp":""}">
-    ${s.art==="anl"
-      ? nf("safe",i,"saldo","Depotwert (€)",s.saldo,"0.01")
-      : nf("safe",i,"saldo","Kontostand (€)",s.saldo,"0.01") + nf("safe",i,"zins","Zins (% p.a.)",s.zins,"0.01")}
-    <label class="check spr"><input type="checkbox" data-k="safe" data-i="${i}" data-f="spar"${s.spar?" checked":""}> wird bespart</label></div>
-    <div class="sum" id="fsum${i}"></div></div>`).join("")
-    : `<p class="empty">Noch keine Konten erfasst.</p>`;
+/* ---------- Reiter 2: Bausteine mit Positionen (wie Reiter 1) ---------- */
+const SCOL = gi => PALETTE[(gi+3) % PALETTE.length];
+const ARTL = {tg:"Konto", anl:"ETF / Fonds"};
+const posName = (q,pi) => (q.name||"").trim() || `Position ${pi+1}`;
+const posLabel = (q,pi) => esc(posName(q,pi)) + (q.wkn ? `<span class="wk">${esc(q.wkn)}</span>` : "");
+function safePos(gi, pi, q, n, L){
+  const a = `data-g="${gi}" data-p="${pi}"`, sub = q.art==="anl" ? "WKN" : "Anbieter", wk = q.art==="anl";
+  const head = L
+    ? `<div class="inl"><span>Name</span><span class="rov">${esc(q.name)||"–"}</span></div>
+       <div class="inl"><span>${sub}</span><span class="rov${wk?" wkn":""}">${esc(q.wkn)||"–"}</span></div>
+       <div class="inl"><span>Art</span><span class="rov">${ARTL[q.art]}</span></div>`
+    : `<div class="ehead"><div class="efields">
+         <label class="inl">Name<input type="text" data-s="pname" ${a} value="${esc(q.name)}" placeholder="z. B. Tagesgeld"></label>
+         <label class="inl">${sub}<input type="text"${wk?' class="wkn"':""} data-s="wkn" ${a} value="${esc(q.wkn)}" placeholder="${sub}" maxlength="${wk?12:40}"></label>
+         <label class="inl">Art<select data-s="art" ${a}><option value="tg"${!wk?" selected":""}>Konto</option><option value="anl"${wk?" selected":""}>ETF / Fonds</option></select></label>
+       </div>${n>1?`<div class="eact"><button class="del" data-sdel="${gi}:${pi}" title="Position entfernen" aria-label="Position entfernen">×</button></div>`:""}</div>`;
+  return `<div class="cetf${q.spar?" sp":""}">
+    ${head}
+    <label class="inl">${wk?"Wert":"Stand"} (€)<input type="number" inputmode="decimal" min="0" step="0.01" data-s="saldo" ${a} value="${q.saldo||""}" placeholder="0"></label>
+    ${wk ? "" : `<label class="inl">Zins (%)<input type="number" inputmode="decimal" min="0" step="0.01" data-s="zins" ${a} value="${q.zins||""}" placeholder="0"></label>`}
+    <label class="check spr"><input type="checkbox" data-s="spar" ${a}${q.spar?" checked":""}> wird bespart</label>
+    <div class="sum" id="psum-${gi}-${pi}" style="margin-top:4px"></div>
+  </div>`;
 }
+function buildSafe(){
+  $("safes").innerHTML = X.sg.map((g,gi)=>{
+    const L = g.locked;
+    const top = L
+      ? `<div class="ehead"><div class="efields">
+           <h3 style="margin:2px 0 4px"><span class="dot" style="background:${SCOL(gi)};margin:0 8px 0 0"></span>${esc(g.name)}</h3>
+           <div class="inl"><span>Ziel</span><span class="rov">${+g.ziel||0} %</span></div>
+         </div><div class="eact"><button class="ico" data-sedit="${gi}" title="Baustein bearbeiten (Name, Ziel, Positionen)" aria-label="Bearbeiten">✎</button></div></div>`
+      : `<div class="ehead"><div class="efields">
+           <label class="inl"><span><span class="dot" style="background:${SCOL(gi)};margin-right:4px"></span>Name</span><input type="text" class="name" data-s="gname" data-g="${gi}" value="${esc(g.name)}" placeholder="Baustein"></label>
+           <label class="inl">Ziel (%)<input type="number" inputmode="decimal" min="0" max="100" step="1" data-s="ziel" data-g="${gi}" value="${g.ziel}"></label>
+         </div><div class="eact"><button class="ico okb" data-slock="${gi}" title="Bestätigen (Enter)" aria-label="Bestätigen">✓</button>${X.sg.length>1?`<button class="del" data-sgdel="${gi}" title="Baustein entfernen" aria-label="Baustein entfernen">×</button>`:""}</div></div>`;
+    return `<div class="group">${top}
+      ${g.pos.map((q,pi)=>safePos(gi,pi,q,g.pos.length,L)).join("")}
+      ${L ? "" : `<button class="add small" data-sadd="${gi}">+ Position</button>`}
+      <div class="sum" id="ssum-${gi}"></div></div>`;
+  }).join("");
+  const b = $("sgadd"); b.disabled = X.sg.length>=MAXG; b.textContent = X.sg.length>=MAXG ? `Maximal ${MAXG} Bausteine` : "+ Baustein hinzufügen";
+}
+function safeLock(gi, on){
+  const g = X.sg[gi];
+  if (on){
+    const q = (c,pi) => document.querySelector(`[data-s="${c}"][data-g="${gi}"]${pi!==undefined?`[data-p="${pi}"]`:""}`);
+    if (!(g.name||"").trim()){ q("gname")?.focus(); return; }
+    const miss = g.pos.findIndex(x=>!(x.name||"").trim());
+    if (miss >= 0){ q("pname",miss)?.focus(); return; }
+  }
+  g.locked = on; buildSafe(); touch(); renderAll();
+  if (!on) document.querySelector(`[data-s="gname"][data-g="${gi}"]`)?.focus();
+}
+document.addEventListener("input", ev=>{          // läuft vor dem allgemeinen Handler (der danach renderAll aufruft)
+  const t = ev.target, c = t.dataset.s; if (!c) return;
+  const g = X.sg[+t.dataset.g];
+  if (c==="gname"){ g.name = t.value; return; }
+  if (c==="ziel"){ g.ziel = Math.max(0, +t.value || 0); return; }
+  const q = g.pos[+t.dataset.p];
+  if (c==="pname") q.name = t.value;
+  else if (c==="wkn") q.wkn = q.art==="anl" ? t.value.toUpperCase().trim() : t.value;
+  else if (c==="saldo" || c==="zins") q[c] = Math.max(0, +t.value || 0);
+  else if (c==="spar"){ q.spar = t.checked; t.closest(".cetf").classList.toggle("sp", q.spar); }
+  else if (c==="art"){ q.art = t.value; if (q.art==="anl") q.wkn = (q.wkn||"").toUpperCase().trim(); buildSafe(); }
+});
+document.addEventListener("keydown", ev=>{
+  const t = ev.target;
+  if (ev.key==="Enter" && ["gname","ziel","pname","wkn"].includes(t.dataset.s)){ ev.preventDefault(); safeLock(+t.dataset.g, true); }
+});
+document.addEventListener("click", ev=>{
+  const b = ev.target.closest("[data-sadd],[data-sdel],[data-slock],[data-sedit],[data-sgdel],#sgadd"); if (!b) return;
+  if (b.id==="sgadd"){
+    if (X.sg.length>=MAXG) return;
+    X.sg.forEach(g=>{ if (!g.locked && (g.name||"").trim() && g.pos.every(x=>(x.name||"").trim())) g.locked = true; });
+    X.sg.push({key:"S"+Date.now().toString(36), name:"", ziel:0, locked:false, pos:[{name:"", wkn:"", art:"tg", saldo:0, zins:0, spar:true}]});
+    buildSafe(); touch(); renderAll();
+    document.querySelector(`[data-s="gname"][data-g="${X.sg.length-1}"]`)?.focus();
+    return;
+  }
+  if (b.dataset.sgdel !== undefined){
+    const gi = +b.dataset.sgdel, g = X.sg[gi], sum = g.pos.reduce((a,x)=>a+(+x.saldo||0),0);
+    if (!confirm(`Baustein „${g.name||"ohne Namen"}“ mit ${g.pos.length} Position(en)${sum?` und ${eur(sum)}`:""} entfernen?`)) return;
+    X.sg.splice(gi,1);
+  }
+  else if (b.dataset.sadd !== undefined){
+    const g = X.sg[+b.dataset.sadd], prev = g.pos[g.pos.length-1];
+    g.pos.push({name:"", wkn:"", art:prev?.art||"tg", saldo:0, zins:0, spar:false});
+    buildSafe(); touch(); renderAll();
+    [...document.querySelectorAll(`[data-s="pname"][data-g="${b.dataset.sadd}"]`)].pop()?.focus();
+    return;
+  }
+  else if (b.dataset.sdel){ const [gi,pi] = b.dataset.sdel.split(":").map(Number); X.sg[gi].pos.splice(pi,1); }
+  else if (b.dataset.slock !== undefined){ safeLock(+b.dataset.slock, true); return; }
+  else if (b.dataset.sedit !== undefined){ safeLock(+b.dataset.sedit, false); return; }
+  buildSafe(); touch(); renderAll();
+});
 const SAFE_TPL = [
-  {t:"Nur Konto",            d:"Tagesgeld o. Ä. – die ganze Sparrate geht aufs Konto.", ziel:100, p:[["Tagesgeld","tg"]]},
-  {t:"Konto + Anleihen-ETF", d:"Je zur Hälfte Konto und Anleihen-ETF.",                ziel:50,  p:[["Tagesgeld","tg"],["Anleihen-ETF","anl"]]},
-  {t:"Leer",                 d:"Ohne Vorgabe – Positionen selbst anlegen.",            ziel:50,  p:[["","tg"]]},
+  {t:"Nur Konto",              d:"Tagesgeld o. Ä. – die ganze Sparrate geht aufs Konto.", g:[["Tagesgeld",100,"tg"]]},
+  {t:"Konto + Anleihen-ETF",   d:"Je zur Hälfte Konto und Anleihen-ETF.",                g:[["Tagesgeld",50,"tg"],["Anleihen-ETF",50,"anl"]]},
+  {t:"Tagesgeld + Festgeld + Anleihen-ETF", d:"Flexibel, fest angelegt und Anleihen.",    g:[["Tagesgeld",40,"tg"],["Festgeld",20,"tg"],["Anleihen-ETF",40,"anl"]]},
+  {t:"Leer",                   d:"Ohne Vorgabe – Bausteine selbst anlegen.",             g:[["",100,"tg"]]},
 ];
 function renderSafeSetup(){
-  const on = X.safe.length === 0;
+  const on = X.sg.length === 0;
   $("tab-safe").classList.toggle("setup", on); $("safeSetup").style.display = on ? "" : "none";
   if (on && !$("safeTpls").children.length)
     $("safeTpls").innerHTML = SAFE_TPL.map((T,i)=>`<button class="tpl" data-stpl="${i}"><span class="tt">${T.t}</span>
-      <span class="bar">${T.p[0][0] ? `<span style="width:${T.ziel}%;background:var(--c5)"></span>${T.ziel<100?`<span style="width:${100-T.ziel}%;background:var(--c6)"></span>`:""}` : ""}</span>
-      <span class="td">${T.p[0][0] ? (T.ziel<100 ? `Konto&nbsp;${T.ziel}&nbsp;% · ETF&nbsp;/&nbsp;Fonds&nbsp;${100-T.ziel}&nbsp;%` : "Konto&nbsp;100&nbsp;%") : "Eigene Aufteilung"}</span><span class="td">${T.d}</span></button>`).join("");
+      <span class="bar">${T.g[0][0] ? T.g.map(([n,z],k)=>`<span style="width:${z}%;background:${SCOL(k)}"></span>`).join("") : ""}</span>
+      <span class="td">${T.g[0][0] ? T.g.map(([n,z])=>`${n}&nbsp;${z}&nbsp;%`).join(" · ") : "Eigene Aufteilung"}</span><span class="td">${T.d}</span></button>`).join("");
 }
 function applySafeTemplate(i){
-  const T = SAFE_TPL[i];
-  X.safe = T.p.map(([name,art])=>({name, wkn:"", art, saldo:0, zins:0, spar:true, locked:false}));
-  X.safePlan = Object.assign({}, X.safePlan, {ziel:T.ziel}); $("spZiel").value = T.ziel;
+  const T = SAFE_TPL[i], stamp = Date.now().toString(36);
+  X.sg = T.g.map(([name,ziel,art],k)=>({key:`S${k}${stamp}`, name, ziel, locked:false,
+    pos:[{name, wkn:"", art, saldo:0, zins:0, spar:true}]}));
   buildSafe(); touch(); renderAll();
-  document.querySelector(`input.name[data-k="safe"][data-i="0"]`)?.focus();
+  document.querySelector(`[data-s="${T.g[0][0] ? "wkn" : "gname"}"][data-g="0"]`)?.focus();
 }
 document.addEventListener("click", ev=>{ const b = ev.target.closest("[data-stpl]"); if (b) applySafeTemplate(+b.dataset.stpl); });
 const BUILD = {etfs:()=>buildEtfs(), stocks:()=>buildStocks(), safe:()=>buildSafe()};
@@ -1008,10 +1099,10 @@ buildEtfs(); buildStocks(); buildSafe();
 if (X.mixZiel === undefined) X.mixZiel = 60;
 if (X.mixMax  === undefined) X.mixMax  = 70;
 $("mixZiel").value = X.mixZiel; $("mixMax").value = X.mixMax;
-X.safePlan = Object.assign({gesamt:0, ziel:50, min:0, band:5, fine:false}, X.safePlan||{});
-X.safe.forEach(s=>{ if (s.art!=="anl") s.art="tg"; });
+X.safePlan = Object.assign({gesamt:0, min:0, band:5, fine:false}, X.safePlan||{});
+X.sg.forEach(g=>g.pos.forEach(q=>{ if (q.art!=="anl") q.art="tg"; }));
 $("spFrei").value = X.safeFrei || "";
-$("spG").value = X.safePlan.gesamt || ""; $("spZiel").value = X.safePlan.ziel; $("spMin").value = X.safePlan.min;
+$("spG").value = X.safePlan.gesamt || ""; $("spMin").value = X.safePlan.min;
 $("spBand").value = X.safePlan.band; $("spFine").checked = !!X.safePlan.fine;
 $("avReb").checked = !!X.avReb;
 $("avMinArm").value = X.avMinArm || 0;
@@ -1024,7 +1115,7 @@ function renderExtra(){
   X.cap = num("cap");
   X.capEtf = num("capEtf");
   X.mixZiel = num("mixZiel"); X.mixMax = num("mixMax");
-  X.safePlan = {gesamt:Math.max(0,num("spG")), ziel:Math.min(100,Math.max(0,num("spZiel"))), min:Math.max(0,num("spMin")),
+  X.safePlan = {gesamt:Math.max(0,num("spG")), min:Math.max(0,num("spMin")),
                 band:Math.max(0,num("spBand")), fine:$("spFine").checked};
   X.avReb = $("avReb").checked;
   X.avMinArm = Math.max(0, num("avMinArm"));
@@ -1092,109 +1183,93 @@ function gMonths(vals, step, ok){
 /* =========================================================
    VORSORGE RISIKOARM
    ========================================================= */
-let SAFE_ALLOC = [];        // Sparrate je besparter Position (für CSV)
+let SAFE_ALLOC = null;      // Sparrate je Position [Baustein][Position] (für CSV)
 function renderSafe(){
   renderSafeSetup();
-  const S = X.safe.map(s=>({...s, saldo:s.saldo||0, zins: s.art==="anl" ? 0 : (s.zins||0)}));
-  const totTg = S.filter(s=>s.art!=="anl").reduce((a,s)=>a+s.saldo,0);
-  const P = X.safePlan || {gesamt:0, tg:0, anl:0};
-  const tot = S.reduce((a,s)=>a+s.saldo,0), rate = P.gesamt;
-  const zj  = S.reduce((a,s)=>a+s.saldo*s.zins/100,0);
+  const G = X.sg, P = X.safePlan, rate = P.gesamt, band = P.band/100, m = Math.round(P.min);
+  const POS = []; G.forEach((g,gi)=>g.pos.forEach((q,pi)=>POS.push({gi, pi, q, saldo:+q.saldo||0, zins: q.art==="anl" ? 0 : (+q.zins||0)})));
+  const vals = G.map(g=>g.pos.reduce((a,q)=>a+(+q.saldo||0),0));
+  const tot = vals.reduce((a,b)=>a+b,0);
+  const totTg = POS.filter(o=>o.q.art!=="anl").reduce((a,o)=>a+o.saldo,0);
+  const zj  = POS.reduce((a,o)=>a+o.saldo*o.zins/100,0);
   const tax = 0.26375;   // Abgeltungsteuer 25 % + Soli, ohne Kirchensteuer
   const frei = X.safeFrei || 0, zSt = Math.max(0, zj - frei), zNetto = zj - zSt*tax;   // Steuer nur über dem Freibetrag
   const avg = totTg ? zj/totTg*100 : 0;     // Ø-Zins nur über die Konten
-  S.forEach((s,i)=>{ const el=$("fsum"+i); if(el) el.textContent = s.art!=="anl" && s.saldo&&s.zins ? `Zinsen ca. ${eur2(s.saldo*s.zins/100)} / Jahr` : ""; });
+  POS.forEach(o=>{ const el=$(`psum-${o.gi}-${o.pi}`); if(el) el.textContent = o.q.art!=="anl" && o.saldo&&o.zins ? `Zinsen ca. ${eur2(o.saldo*o.zins/100)} / Jahr` : ""; });
+  G.forEach((g,gi)=>{ const el=$("ssum-"+gi); if (el) el.textContent = "Summe " + eur(vals[gi]); });
 
-  bar("barSafe", S.map((s,i)=>({l:itemName("safe",s,i), v:s.saldo, c:col(i+3)})));
-  $("safeTable").innerHTML = `<thead><tr><th>Position</th><th style="text-align:left">Art</th><th>Wert</th><th>Anteil</th><th>Zins</th><th>Zinsen / Jahr</th><th>Zinsen / Monat</th><th>bespart</th></tr></thead><tbody>` +
-    S.map((s,i)=>{ const z=s.saldo*s.zins/100; return `<tr><td><span class="dot" style="background:${col(i+3)}"></span>${itemLabel("safe",s,i)}</td>
-      <td style="text-align:left">${s.art==="anl"?"ETF / Fonds":"Konto"}</td>
-      <td>${eur(s.saldo)}</td><td>${tot?pct(s.saldo/tot*100,1):"–"}</td>
-      ${s.art==="anl" ? `<td>–</td><td>–</td><td>–</td>` : `<td>${pct(s.zins)}</td><td>${eur2(z)}</td><td>${eur2(z/12)}</td>`}<td>${s.spar?"✅ ja":"– nein"}</td></tr>`; }).join("") +
-    `</tbody><tfoot><tr><td>Gesamt</td><td></td><td>${eur(tot)}</td><td>${tot?pct(100,1):"–"}</td><td>${totTg?"Ø "+pct(avg):"–"}</td>
+  const pcol = o => SCOL(o.gi);
+  bar("barSafe", POS.map(o=>({l:`${G[o.gi].name} – ${posName(o.q,o.pi)}`, v:o.saldo, c:pcol(o)})));
+  $("safeTable").innerHTML = `<thead><tr><th>Position</th><th style="text-align:left">Baustein</th><th style="text-align:left">Art</th><th>Wert</th><th>Anteil</th><th>Zins</th><th>Zinsen / Jahr</th><th>Zinsen / Monat</th><th>bespart</th></tr></thead><tbody>` +
+    POS.map(o=>{ const z=o.saldo*o.zins/100; return `<tr><td><span class="dot" style="background:${pcol(o)}"></span>${posLabel(o.q,o.pi)}</td>
+      <td style="text-align:left">${esc(G[o.gi].name)}</td><td style="text-align:left">${ARTL[o.q.art]}</td>
+      <td>${eur(o.saldo)}</td><td>${tot?pct(o.saldo/tot*100,1):"–"}</td>
+      ${o.q.art==="anl" ? `<td>–</td><td>–</td><td>–</td>` : `<td>${pct(o.zins)}</td><td>${eur2(z)}</td><td>${eur2(z/12)}</td>`}<td>${o.q.spar?"✅ ja":"– nein"}</td></tr>`; }).join("") +
+    `</tbody><tfoot><tr><td>Gesamt</td><td></td><td></td><td>${eur(tot)}</td><td>${tot?pct(100,1):"–"}</td><td>${totTg?"Ø "+pct(avg):"–"}</td>
       <td>${eur2(zj)}</td><td>${eur2(zj/12)}</td><td></td></tr></tfoot>`;
 
   // 12-Monats-Ausblick: monatliche Verzinsung mit Ø-Zins, Sparrate gesamt am Monatsende, Zins konstant, vor Steuern
-  const r = avg/100/12; let fvTg = totTg; for (let m=0; m<12; m++) fvTg = fvTg*(1+r);
+  const r = avg/100/12; let fvTg = totTg; for (let k=0; k<12; k++) fvTg = fvTg*(1+r);
   const fv = fvTg + (tot - totTg) + 12*rate;
   $("safenote").innerHTML = tot||rate ? `Zinsen pro Jahr: <strong>${eur2(zj)}</strong> brutto · <strong>${eur2(zNetto)}</strong> nach Steuer (Abgeltungsteuer + Soli, 26,375 %, ohne Kirchensteuer, ${frei ? `Freibetrag ${eur(frei)}` : "ohne Freibetrag"}).<br>
     In 12 Monaten ca. <strong>${eur(fv)}</strong> (Konten mit Ø-Zins verzinst, ETFs / Fonds ohne Kursentwicklung, plus 12 × Sparrate, vor Steuern).` : "";
 
-  // Ist-Verteilung nach Art + Rebalancing über die Sparrate (eigene Logik, unabhängig von 50/20/30)
-  const ART = [{k:"tg", l:"Konto", c:"var(--c5)"}, {k:"anl", l:"ETF / Fonds", c:"var(--c6)"}];
-  const av  = ART.map(a=>S.filter(s=>(s.art||"tg")===a.k).reduce((x,s)=>x+s.saldo,0));
-  const zt  = P.ziel/100, band = P.band/100, m = Math.round(P.min);
-  // Art mit Ziel, aber noch ohne Position: wird übersprungen – die ganze Rate geht an die andere Art
-  const has  = ART.map(x=>X.safe.some(s=>s.art===x.k));
-  const miss = ART.findIndex((x,i)=>!has[i] && [zt,1-zt][i] > 0 && has.some(Boolean));
-  const skip = miss >= 0;
-  const tg   = skip ? has.map(h=>h?1:0) : [zt, 1-zt];      // wirksames Ziel
-  bar("barSafeArt", ART.map((a,i)=>({l:a.l, v:av[i], c:a.c})));
-  const okArt = (v)=> { const T=v[0]+v[1]; return T>0 && tg.every((z,i)=>Math.abs(v[i]/T - z) <= band + 1e-12); };
-  $("safeIst").innerHTML = `<thead><tr><th>Art</th><th>Ist €</th><th>Ist %</th><th>Ziel %</th><th>Abw. pp</th><th>Abw. €</th><th>Status</th></tr></thead><tbody>` +
-    ART.map((a,i)=>{ const p = tot? av[i]/tot : 0, d = p - tg[i], ok = Math.abs(d) <= band + 1e-12;
-      return `<tr><td><span class="dot" style="background:${a.c}"></span>${a.l}</td><td>${eur(av[i])}</td><td>${tot?pct(p*100):"–"}</td>
-        <td>${pct(tg[i]*100,0)}</td><td>${tot?pp(d*100):"–"}</td><td>${tot?signEur(av[i]-tg[i]*tot):"–"}</td>
-        <td class="${skip&&!has[i]?"":ok?"ok":"warn"}">${skip&&!has[i]?"ℹ️ noch keine Position":!tot?"–":ok?"✅ im Band":"⚠️ außerhalb"}</td></tr>`; }).join("") +
-    `</tbody><tfoot><tr><td>Gesamt</td><td>${eur(tot)}</td><td>${tot?pct(100):"–"}</td><td></td><td></td><td></td><td></td></tr></tfoot>`;
+  // Ist-Verteilung je Baustein + Rebalancing über die Sparrate
+  const zs = G.map(g=>+g.ziel||0), zSum = zs.reduce((a,b)=>a+b,0), tg = zs.map(z=>z/100);
+  const sumOk = Math.abs(zSum-100) < 0.001;
+  bar("barSafeArt", G.map((g,gi)=>({l:`${g.name} (Ziel ${zs[gi]} %)`, v:vals[gi], c:SCOL(gi)})));
+  const okG = v => { const T=v.reduce((a,b)=>a+b,0); return T>0 && tg.every((z,i)=>Math.abs(v[i]/T - z) <= band + 1e-12); };
+  $("safeIst").innerHTML = `<thead><tr><th>Baustein</th><th>Ist €</th><th>Ist %</th><th>Ziel %</th><th>Abw. pp</th><th>Abw. €</th><th>Status</th></tr></thead><tbody>` +
+    G.map((g,i)=>{ const p = tot? vals[i]/tot : 0, d = p - tg[i], ok = Math.abs(d) <= band + 1e-12;
+      return `<tr><td><span class="dot" style="background:${SCOL(i)}"></span>${esc(g.name)}</td><td>${eur(vals[i])}</td><td>${tot?pct(p*100):"–"}</td>
+        <td>${pct(zs[i],0)}</td><td>${tot?pp(d*100):"–"}</td><td>${tot?signEur(vals[i]-tg[i]*tot):"–"}</td>
+        <td class="${ok?"ok":"warn"}">${!tot?"–":ok?"✅ im Band":"⚠️ außerhalb"}</td></tr>`; }).join("") +
+    `</tbody><tfoot><tr><td>Gesamt</td><td>${eur(tot)}</td><td>${tot?pct(100):"–"}</td><td>${pct(zSum,0)}</td><td></td><td></td><td></td></tr></tfoot>`;
 
-  const mins = has.map(h=>h?m:0), nArt = has.filter(Boolean).length;   // Mindestrate nur für Arten mit Position
+  const n = G.length, mins = G.map(()=>m);
+  const lbl = `<strong>${esc(safeShort())} (${zs.join("/")}):</strong>`;
   let spHtml = "", spD = "", spF = "";
-  SAFE_ALLOC = [];
-  // Art mit Positionen, aber keiner als „wird bespart“ markiert (und mit Anspruch auf einen Betrag)
-  const noSpar = ART.filter((x,i)=> X.safe.some(s=>s.art===x.k) && !X.safe.some(s=>s.art===x.k && s.spar) && (tg[i]>0 || m>0));
-  if (rate <= 0){
+  SAFE_ALLOC = null;
+  const noSpar = G.filter(g=>!g.pos.some(q=>q.spar));
+  if (!n){ /* Vorlagenauswahl */ }
+  else if (!sumOk){
+    spF = `⚠️ ${lbl} Die Ziele ergeben ${pct(zSum,0)} – bitte so anpassen, dass sie zusammen 100 % ergeben.`;
+  } else if (rate <= 0){
     const fromAV = X.avApplied && X.avApplied[1] === 0;
-    if (fromAV){
-      spHtml = `<thead><tr><th>Art</th><th>Betrag</th><th>Anteil</th></tr></thead><tbody>` +
-        ART.map(x=>`<tr><td><span class="dot" style="background:${x.c}"></span><strong>${x.l}</strong></td><td class="big">${eur(0)}</td><td>–</td></tr>`).join("") +
-        `</tbody><tfoot><tr><td>Summe</td><td>${eur(0)}</td><td></td></tr></tfoot>`;
-      spF = `ℹ️ <strong>${esc(safeShort())}:</strong> Sparrate aktuell 0 € – übernommen aus dem Rebalancing in der Übersicht Altersvorsorge. Dieser Teil liegt über dem Zielkorridor und wird vorerst nicht bespart; die Gesamtrate fließt in „${esc(coreShort())}“. <a href="#" class="goto" data-goto="av">→ Übersicht Altersvorsorge</a>`;
-    } else {
-      spF = `<span class="empty">Sparrate gesamt eintragen – oder über das Rebalancing in der <a href="#" class="goto" data-goto="av">Übersicht Altersvorsorge</a> berechnen lassen.</span>`;
-    }
-  } else if (rate < m*nArt){
-    spF = `<span class="err">Sparrate (${eur(rate)}) reicht nicht für ${nArt} × Mindestrate (${eur(m*nArt)}).</span>`;
+    spF = fromAV
+      ? `ℹ️ <strong>${esc(safeShort())}:</strong> Sparrate aktuell 0 € – übernommen aus dem Rebalancing in der Übersicht Altersvorsorge. Dieser Teil liegt über dem Zielkorridor und wird vorerst nicht bespart; die Gesamtrate fließt in „${esc(coreShort())}“. <a href="#" class="goto" data-goto="av">→ Übersicht Altersvorsorge</a>`
+      : `<span class="empty">Sparrate gesamt eintragen – oder über das Rebalancing in der <a href="#" class="goto" data-goto="av">Übersicht Altersvorsorge</a> berechnen lassen.</span>`;
   } else if (noSpar.length){
-    spF = `⚠️ <strong>${esc(safeShort())}:</strong> Bei ${noSpar.map(x=>x.l).join(" und ")} ist keine Position als „wird bespart“ markiert.`;
+    spF = `⚠️ ${lbl} In ${noSpar.map(g=>esc(g.name)).join(", ")} ist keine Position als „wird bespart“ markiert.`;
+  } else if (rate < n*m){
+    spF = `<span class="err">Sparrate (${eur(rate)}) reicht nicht für ${n} × Mindestrate (${eur(n*m)}).</span>`;
   } else {
     const empty = tot <= 0;                                  // noch keine Werte: Aufteilung nach Ziel
-    const allIn = empty || okArt(av), useCorr = !empty && (!allIn || P.fine);
-    const a = roundTo(useCorr ? gRebal(av, tg, rate, mins) : gStd(tg, rate, mins), rate);
-    // Betrag einer Art gleichmäßig auf ihre besparten Positionen verteilen (wie Reiter 1)
-    const alloc = [];
-    ART.forEach((x,ai)=>{
-      const sp = X.safe.map((s,j)=>s.art===x.k && s.spar ? j : -1).filter(j=>j>=0);
-      if (!sp.length){ if (a[ai] > 0) alloc.push({j:-1, ai, v:a[ai]}); return; }   // Art noch ohne Position
-      const parts = roundTo(sp.map(()=>a[ai]/sp.length), a[ai]); sp.forEach((j,q)=>alloc.push({j, ai, v:parts[q]}));
-    });
-    SAFE_ALLOC = alloc.map(o=>({name: o.j<0 ? "noch keine Position erfasst" : itemName("safe",X.safe[o.j],o.j),
-                                wkn: o.j<0 ? "" : (X.safe[o.j].wkn||""), art: ART[o.ai].l, v: o.v}));
-    spHtml = `<thead><tr><th>Besparte Position</th><th style="text-align:left">Art</th><th>Betrag</th><th>Anteil</th></tr></thead><tbody>` +
-      alloc.map(o=>`<tr><td><span class="dot" style="background:${o.j<0 ? ART[o.ai].c : col(o.j+3)}"></span><strong>${o.j<0 ? "–" : itemLabel("safe",X.safe[o.j],o.j)}</strong></td>
-        <td style="text-align:left">${ART[o.ai].l}</td><td class="big">${eur(o.v)}</td><td>${pct(o.v/rate*100,1)}</td></tr>`).join("") +
-      `</tbody><tfoot><tr><td>Summe</td><td></td><td>${eur(a[0]+a[1])}</td><td>${pct(100,1)}</td></tr></tfoot>`;
-    const multi = ART.filter(x=>X.safe.filter(s=>s.art===x.k && s.spar).length > 1).map(x=>x.l);
-    const mNote = multi.length ? ` Bei ${multi.join(" und ")} werden mehrere Positionen bespart – der Betrag wird gleichmäßig aufgeteilt.` : "";
+    const allIn = empty || okG(vals), useCorr = !empty && (!allIn || P.fine);
+    const a = roundTo(useCorr ? gRebal(vals, tg, rate, mins) : gStd(tg, rate, mins), rate);
+    // Betrag eines Bausteins gleichmäßig auf seine besparten Positionen verteilen (wie Reiter 1)
+    SAFE_ALLOC = G.map((g,gi)=>{ const sp = g.pos.map((q,pi)=>q.spar?pi:-1).filter(pi=>pi>=0);
+      const parts = roundTo(sp.map(()=>a[gi]/sp.length), a[gi]), out = g.pos.map(()=>0); sp.forEach((pi,k)=>out[pi]=parts[k]); return out; });
+    spHtml = `<thead><tr><th>Besparte Position</th><th style="text-align:left">Baustein</th><th>Betrag</th><th>Anteil</th></tr></thead><tbody>` +
+      G.map((g,gi)=>g.pos.map((q,pi)=>!q.spar ? "" :
+        `<tr><td><span class="dot" style="background:${SCOL(gi)}"></span><strong>${posLabel(q,pi)}</strong></td><td style="text-align:left">${esc(g.name)}</td>
+         <td class="big">${eur(SAFE_ALLOC[gi][pi])}</td><td>${pct(SAFE_ALLOC[gi][pi]/rate*100,1)}</td></tr>`).join("")).join("") +
+      `</tbody><tfoot><tr><td>Summe</td><td></td><td>${eur(a.reduce((x,y)=>x+y,0))}</td><td>${pct(100,1)}</td></tr></tfoot>`;
+    const multi = G.filter(g=>g.pos.filter(q=>q.spar).length > 1).map(g=>esc(g.name));
+    const mNote = multi.length ? ` In ${multi.join(", ")} werden mehrere Positionen bespart – der Betrag des Bausteins wird gleichmäßig aufgeteilt.` : "";
     const f = k => k===null ? "mehr als 50 Jahre" : (k===1 ? "1 Monat" : k+" Monaten");
-    if (empty) spD = `Standardaufteilung ${pct(zt*100,0)}/${pct((1-zt)*100,0)} nach Ziel.`;
-    else if (!useCorr) spD = `Standardaufteilung ${pct(zt*100,0)}/${pct((1-zt)*100,0)} – beide Arten liegen im Band.`;
+    if (empty) spD = `Standardaufteilung ${zs.join("/")} nach Ziel.`;
+    else if (!useCorr) spD = `Standardaufteilung ${zs.join("/")} – alle Bausteine liegen im Band.`;
     else {
       const step = v => gRebal(v, tg, rate, mins);
-      const mb = allIn ? 0 : gMonths(av, step, okArt);
-      const mz = gMonths(av, step, v=>{ const T=v[0]+v[1]; return T>0 && Math.abs(v[0]/T - tg[0]) <= 0.005; });
+      const mb = allIn ? 0 : gMonths(vals, step, okG);
+      const mz = gMonths(vals, step, v=>{ const T=v.reduce((x,y)=>x+y,0); return T>0 && tg.every((z,i)=>Math.abs(v[i]/T - z) <= 0.005); });
       spD = (allIn ? "" : `Zurück im Band nach ca. ${f(mb)}. `) + (mz===0 ? `Bereits auf Ziel (±0,5 pp)` : `Auf Ziel (±0,5 pp) nach ca. ${f(mz)}`) + ` – Zinsen/Kurse nicht berücksichtigt, Aufteilung jeden Monat neu berechnen.`;
     }
-    const lbl = `<strong>${esc(safeShort())} (Konto ${pct(zt*100,0)} · ETF / Fonds ${pct((1-zt)*100,0)}):</strong>`;
+    spD += mNote;
     spF = empty ? `ℹ️ ${lbl} Noch keine Werte erfasst – die Sparrate wird nach Ziel aufgeteilt.`
         : allIn ? (P.fine ? `✅ ${lbl} alles im Band – mit Feinausgleich die Beträge oben nutzen.` : `✅ ${lbl} alles im Band – Sparplan so lassen.`)
-                : `⚠️ ${lbl} Verteilung außerhalb des Bands – Sparplan auf die Beträge oben umstellen.`;
-    spD += mNote;
-    if (skip){
-      const o = 1 - miss;
-      spD = mNote.trim();
-      spF = `ℹ️ ${lbl} Noch keine Position „${ART[miss].l}“ erfasst – die Sparrate geht vollständig auf „${ART[o].l}“. Das Ziel gilt, sobald eine Position „${ART[miss].l}“ erfasst ist.`;
-    } else if (!empty && has[1] && !av[1] && zt < 1) spD += ` Hinweis: ETF / Fonds hat noch keinen Wert – solange fließt die Rate (bis auf die Mindestrate) dorthin.`;
+                : `⚠️ ${lbl} mindestens ein Baustein liegt außerhalb des Bands – Sparplan auf die Beträge oben umstellen.`;
   }
   $("spTable").innerHTML = spHtml; $("spDauer").textContent = spD; $("spFazit").innerHTML = spF;
 
@@ -1291,7 +1366,7 @@ function renderAll(){
     else if (vermOk && rateOk) fz = `✅ ${AVL} Vermögen und Sparraten liegen im Korridor – Sparplan so lassen.`;
     else fz = `⚠️ ${AVL} ${!vermOk?"Vermögen":""}${!vermOk&&!rateOk?" und ":""}${!rateOk?`Sparraten (${pct(rShare*100,1)} risikoreich)`:""} außerhalb des Korridors – Rebalancing oben aktivieren, um einen Vorschlag zu sehen.`;
   } else {
-    const minsAV = [CS.groups.length*Math.round(num("min")), Math.max(Math.round(X.avMinArm||0), 2*Math.round(X.safePlan.min||0))];
+    const minsAV = [CS.groups.length*Math.round(num("min")), Math.max(Math.round(X.avMinArm||0), X.sg.length*Math.round(X.safePlan.min||0))];
     const okAV = v => { const T=v[0]+v[1]; return T>0 && inCorr(v[0]/T); };
     const stepAV = v => { const T=v[0]+v[1], r=T? v[0]/T : zLo;
       if (inCorr(r)) return gStd([zLo,1-zLo], S_AV, minsAV);
@@ -1441,7 +1516,6 @@ document.addEventListener("click", e=>{
     const NEW = {
       etfs:  {name:"", wkn:"", comd:0, scal:0, rate:0, locked:false},
       stocks:{name:"", wkn:"", wert:0, anz:0, kauf:0, locked:false},
-      safe:  {name:"", wkn:"", art:"tg", saldo:0, zins:0, spar:!X.safe.some(s=>s.art==="tg"), locked:false},
     };
     X[k].push(NEW[k]);
     BUILD[k]();
@@ -1527,8 +1601,8 @@ $("resetCore").addEventListener("click", ()=>{
 });
 
 const TAB_RESET = {
-  safe:   {name:()=>safeName(), what:n=>`Alle Positionen, Werte, die Sparrate, das Ziel, der Freibetrag und der Name werden gelöscht – danach startet „${n}“ wieder mit der Vorlagenauswahl.`,
-           run:()=>{ X.safe = []; X.safePlan = {gesamt:0, ziel:50, min:0, band:5, fine:false}; X.safeTab = {t1:"Sparplan", t2:"Sicherheitsbaustein"}; X.safeFrei = 0; }},
+  safe:   {name:()=>safeName(), what:n=>`Alle Bausteine, Positionen, Werte, die Sparrate, der Freibetrag und der Name werden gelöscht – danach startet „${n}“ wieder mit der Vorlagenauswahl.`,
+           run:()=>{ X.sg = []; X.safePlan = {gesamt:0, min:0, band:5, fine:false}; X.safeTab = {t1:"Sparplan", t2:"Sicherheitsbaustein"}; X.safeFrei = 0; }},
   etfs:   {name:()=>"Spielgeld ETFs",   what:()=>"Alle ETFs und ihre Werte werden gelöscht. Der Grenzwert für den Hinweis bleibt erhalten.", run:()=>{ X.etfs = []; }},
   stocks: {name:()=>"Spielgeld Aktien", what:()=>"Alle Aktien und ihre Werte werden gelöscht. Der Grenzwert für den Hinweis bleibt erhalten.", run:()=>{ X.stocks = []; }},
 };
@@ -1568,10 +1642,9 @@ $("expCsv").addEventListener("click", ()=>{
   CS.groups.forEach((g,i)=>g.etfs.forEach((e,j)=>rows.push([coreName(), [g.name, e.anbieter, e.depot && `Depot ${e.depot}`].filter(Boolean).join(" – "), e.wkn||"", typLabel(e.typ),
     n(+e.wert||0), cT?n((+e.wert||0)/cT*100):"", "", n(CORE.etfAlloc ? CORE.etfAlloc[i][j] : 0)])));
   // Risikoarm
-  const sT = X.safe.reduce((a,s)=>a+(s.saldo||0),0);
-  X.safe.forEach((s,i)=>rows.push([safeName(), itemName("safe",s,i), s.wkn||"", s.art==="anl"?"ETF / Fonds":"Konto",
-    n(s.saldo), sT?n((s.saldo||0)/sT*100):"", s.art==="anl"?"":n(s.zins), ""]));
-  SAFE_ALLOC.forEach(o=>rows.push([safeName(), "Sparrate – "+o.name, o.wkn, o.art, "", "", "", n(o.v)]));
+  const sT = X.sg.reduce((a,g)=>a+g.pos.reduce((x,q)=>x+(+q.saldo||0),0),0);
+  X.sg.forEach((g,gi)=>g.pos.forEach((q,pi)=>rows.push([safeName(), [g.name, posName(q,pi)].filter(Boolean).join(" – "), q.wkn||"", ARTL[q.art],
+    n(+q.saldo||0), sT?n((+q.saldo||0)/sT*100):"", q.art==="anl"?"":n(q.zins), n(SAFE_ALLOC ? SAFE_ALLOC[gi][pi] : 0)])));
   // Spielgeld ETFs
   const eT = X.etfs.reduce((a,e)=>a+e.comd+e.scal,0);
   X.etfs.forEach((e,i)=>{
