@@ -353,7 +353,7 @@
       <p class="note" style="margin:0 0 12px;color:var(--text)">Wähl eine Vorlage. Namen, Anbieter, WKNs und das Ziel kannst du danach jederzeit ändern, Positionen hinzufügen oder entfernen.</p>
       <div class="tpls" id="safeTpls"></div>
     </section>
-    <p class="note" style="margin:0 0 14px" id="safeNote">Sicherer Teil – Konten (z. B. Tagesgeld) und Anleihen-ETFs. Ausgleich nur über die Sparrate; die anderen Reiter fließen hier <strong>nicht</strong> ein. Name und Anbieter bzw. WKN mit ✓ oder Enter bestätigen, mit ✎ wieder bearbeiten.</p>
+    <p class="note" style="margin:0 0 14px" id="safeNote">Sicherer Teil – Konten (z. B. Tagesgeld, Festgeld) und ETFs / Fonds (z. B. Anleihen- oder Geldmarkt-ETF). Ausgleich nur über die Sparrate; die anderen Reiter fließen hier <strong>nicht</strong> ein. Name und Anbieter bzw. WKN mit ✓ oder Enter bestätigen, mit ✎ wieder bearbeiten.</p>
     <section class="card">
       <h2>Konten &amp; Anlagen (€)</h2>
       <div class="groups" id="safes"></div>
@@ -374,7 +374,7 @@
       <h2>Sparplan</h2>
       <div class="row">
         <div><label for="spG">Sparrate gesamt (€/Monat)</label><input type="number" inputmode="decimal" id="spG" min="0" step="1" placeholder="0"></div>
-        <div><label for="spZiel">Ziel Tagesgeld (%) – Rest Anleihen-ETF</label><input type="number" inputmode="decimal" id="spZiel" min="0" max="100" step="1" value="50"></div>
+        <div><label for="spZiel">Ziel Konto (%) – Rest ETF / Fonds</label><input type="number" inputmode="decimal" id="spZiel" min="0" max="100" step="1" value="50"></div>
         <div><label for="spMin">Mindestrate je Art (€)</label><input type="number" inputmode="decimal" id="spMin" min="0" step="1" value="0"></div>
         <div><label for="spBand">Toleranzband (± Prozentpunkte)</label><input type="number" inputmode="decimal" id="spBand" min="0" step="0.5" value="5"></div>
       </div>
@@ -960,8 +960,8 @@ function buildSafe(){
   $("safes").innerHTML = X.safe.length ? X.safe.map((s,i)=>`<div class="group">
     ${headItem("safe",i,s)}
     <label>Art<select data-k="safe" data-i="${i}" data-f="art">
-      <option value="tg"${s.art!=="anl"?" selected":""}>Tagesgeld / Konto</option>
-      <option value="anl"${s.art==="anl"?" selected":""}>Anleihen-ETF</option></select></label>
+      <option value="tg"${s.art!=="anl"?" selected":""}>Konto (Tagesgeld, Festgeld)</option>
+      <option value="anl"${s.art==="anl"?" selected":""}>ETF / Fonds (z. B. Anleihen-ETF)</option></select></label>
     ${s.art==="anl"
       ? nf("safe",i,"saldo","Depotwert (€)",s.saldo,"0.01")
       : nf("safe",i,"saldo","Kontostand (€)",s.saldo,"0.01") + nf("safe",i,"zins","Zins (% p.a.)",s.zins,"0.01")}
@@ -979,7 +979,7 @@ function renderSafeSetup(){
   if (on && !$("safeTpls").children.length)
     $("safeTpls").innerHTML = SAFE_TPL.map((T,i)=>`<button class="tpl" data-stpl="${i}"><span class="tt">${T.t}</span>
       <span class="bar">${T.p[0][0] ? `<span style="width:${T.ziel}%;background:var(--c5)"></span>${T.ziel<100?`<span style="width:${100-T.ziel}%;background:var(--c6)"></span>`:""}` : ""}</span>
-      <span class="td">${T.p[0][0] ? (T.ziel<100 ? `Konto&nbsp;${T.ziel}&nbsp;% · Anleihen-ETF&nbsp;${100-T.ziel}&nbsp;%` : "Konto&nbsp;100&nbsp;%") : "Eigene Aufteilung"}</span><span class="td">${T.d}</span></button>`).join("");
+      <span class="td">${T.p[0][0] ? (T.ziel<100 ? `Konto&nbsp;${T.ziel}&nbsp;% · ETF&nbsp;/&nbsp;Fonds&nbsp;${100-T.ziel}&nbsp;%` : "Konto&nbsp;100&nbsp;%") : "Eigene Aufteilung"}</span><span class="td">${T.d}</span></button>`).join("");
 }
 function applySafeTemplate(i){
   const T = SAFE_TPL[i];
@@ -1088,7 +1088,7 @@ function renderSafe(){
   bar("barSafe", S.map((s,i)=>({l:itemName("safe",s,i), v:s.saldo, c:col(i+3)})));
   $("safeTable").innerHTML = `<thead><tr><th>Position</th><th style="text-align:left">Art</th><th>Wert</th><th>Anteil</th><th>Zins</th><th>Zinsen / Jahr</th><th>Zinsen / Monat</th></tr></thead><tbody>` +
     S.map((s,i)=>{ const z=s.saldo*s.zins/100; return `<tr><td><span class="dot" style="background:${col(i+3)}"></span>${itemLabel("safe",s,i)}</td>
-      <td style="text-align:left">${s.art==="anl"?"Anleihen-ETF":"Konto"}</td>
+      <td style="text-align:left">${s.art==="anl"?"ETF / Fonds":"Konto"}</td>
       <td>${eur(s.saldo)}</td><td>${tot?pct(s.saldo/tot*100,1):"–"}</td>
       ${s.art==="anl" ? `<td>–</td><td>–</td><td>–</td>` : `<td>${pct(s.zins)}</td><td>${eur2(z)}</td><td>${eur2(z/12)}</td>`}</tr>`; }).join("") +
     `</tbody><tfoot><tr><td>Gesamt</td><td></td><td>${eur(tot)}</td><td>${tot?pct(100,1):"–"}</td><td>${totTg?"Ø "+pct(avg):"–"}</td>
@@ -1098,10 +1098,10 @@ function renderSafe(){
   const r = avg/100/12; let fvTg = totTg; for (let m=0; m<12; m++) fvTg = fvTg*(1+r);
   const fv = fvTg + (tot - totTg) + 12*rate;
   $("safenote").innerHTML = tot||rate ? `Zinsen pro Jahr: <strong>${eur2(zj)}</strong> brutto · <strong>${eur2(zj*(1-tax))}</strong> nach Steuer (Abgeltungsteuer + Soli, 26,375 %, ohne Kirchensteuer).<br>
-    In 12 Monaten ca. <strong>${eur(fv)}</strong> (Konten mit Ø-Zins verzinst, Anleihen-ETF ohne Kursentwicklung, plus 12 × Sparrate, vor Steuern).` : "";
+    In 12 Monaten ca. <strong>${eur(fv)}</strong> (Konten mit Ø-Zins verzinst, ETFs / Fonds ohne Kursentwicklung, plus 12 × Sparrate, vor Steuern).` : "";
 
   // Ist-Verteilung nach Art + Rebalancing über die Sparrate (eigene Logik, unabhängig von 50/20/30)
-  const ART = [{k:"tg", l:"Tagesgeld / Konto", c:"var(--c5)"}, {k:"anl", l:"Anleihen-ETF", c:"var(--c6)"}];
+  const ART = [{k:"tg", l:"Konto", c:"var(--c5)"}, {k:"anl", l:"ETF / Fonds", c:"var(--c6)"}];
   const av  = ART.map(a=>S.filter(s=>(s.art||"tg")===a.k).reduce((x,s)=>x+s.saldo,0));
   const zt  = P.ziel/100, tg = [zt, 1-zt], band = P.band/100, m = Math.round(P.min);
   bar("barSafeArt", ART.map((a,i)=>({l:a.l, v:av[i], c:a.c})));
@@ -1143,11 +1143,11 @@ function renderSafe(){
       const mz = gMonths(av, step, v=>{ const T=v[0]+v[1]; return T>0 && Math.abs(v[0]/T - tg[0]) <= 0.005; });
       spD = (allIn ? "" : `Zurück im Band nach ca. ${f(mb)}. `) + `Auf Ziel (±0,5 pp) nach ca. ${f(mz)} – Zinsen/Kurse nicht berücksichtigt, Aufteilung jeden Monat neu berechnen.`;
     }
-    const lbl = `<strong>${esc(safeShort())} (Tagesgeld ${pct(zt*100,0)} / Anleihen ${pct((1-zt)*100,0)}):</strong>`;
+    const lbl = `<strong>${esc(safeShort())} (Konto ${pct(zt*100,0)} · ETF / Fonds ${pct((1-zt)*100,0)}):</strong>`;
     spF = empty ? `ℹ️ ${lbl} Noch keine Werte erfasst – die Sparrate wird nach Ziel aufgeteilt.`
         : allIn ? (P.fine ? `✅ ${lbl} alles im Band – mit Feinausgleich die Beträge oben nutzen.` : `✅ ${lbl} alles im Band – Sparplan so lassen.`)
                 : `⚠️ ${lbl} Verteilung außerhalb des Bands – Sparplan auf die Beträge oben umstellen.`;
-    if (!empty && !av[1] && zt < 1) spD += ` Hinweis: Noch kein Anleihen-ETF erfasst – solange fließt die Rate (bis auf die Mindestrate) dorthin. Willst du vorerst nur Tagesgeld besparen, setze das Ziel Tagesgeld auf 100 %.`;
+    if (!empty && !av[1] && zt < 1) spD += ` Hinweis: Noch kein ETF / Fonds erfasst – solange fließt die Rate (bis auf die Mindestrate) dorthin. Willst du vorerst nur das Konto besparen, setze das Ziel Konto auf 100 %.`;
   }
   $("spTable").innerHTML = spHtml; $("spDauer").textContent = spD; $("spFazit").innerHTML = spF;
 
@@ -1507,7 +1507,7 @@ $("expCsv").addEventListener("click", ()=>{
     n(+e.wert||0), cT?n((+e.wert||0)/cT*100):"", "", n(CORE.etfAlloc ? CORE.etfAlloc[i][j] : 0)])));
   // Risikoarm
   const sT = X.safe.reduce((a,s)=>a+(s.saldo||0),0);
-  X.safe.forEach((s,i)=>rows.push([safeName(), itemName("safe",s,i), s.wkn||"", s.art==="anl"?"Anleihen-ETF":"Tagesgeld / Konto",
+  X.safe.forEach((s,i)=>rows.push([safeName(), itemName("safe",s,i), s.wkn||"", s.art==="anl"?"ETF / Fonds":"Konto",
     n(s.saldo), sT?n((s.saldo||0)/sT*100):"", s.art==="anl"?"":n(s.zins), ""]));
   [...document.querySelectorAll("#spTable tbody tr")].forEach(tr=>rows.push([safeName(), "Sparrate "+tr.children[0].textContent.trim(), "", "", "", "", "", tr.children[1].textContent.replace(/[^\d]/g,"")]));
   // Spielgeld ETFs
