@@ -31,9 +31,10 @@ Sprache der App und der Kommunikation: **Deutsch**.
    Laden, Offline-Neuladen, alle Reiter durchklicken, PDF-Export, keine `pageerror`.
 
 ## Reiter (Tabs)
-1. **Risikoreich** (`#tab-vorsorge`, Speicherschlüssel `depot-rechner-v1`) – *generisch überarbeitet, fertig*
-2. **Risikoarm** (`#tab-safe`) – Tagesgeld/Konten und Anleihen-ETFs – *als Nächstes dran*
-3. **Übersicht Altersvorsorge** (`#tab-av`) – Verhältnis risikoreich/risikoarm, optionales Rebalancing der Gesamtrate
+0. **Info** (`#tab-daten`) – Infokasten, Sicherung (Export/Import, letzte Sicherung), CSV/PDF, „Alle Daten zurücksetzen“
+1. **Risikoreich** (`#tab-vorsorge`, Speicherschlüssel `depot-rechner-v1`) – Name frei wählbar – *generisch überarbeitet, fertig*
+2. **Risikoarm** (`#tab-safe`) – Konten und ETFs/Fonds – Name frei wählbar – *generisch überarbeitet, fertig*
+3. **Übersicht Altersvorsorge** (`#tab-av`) – Verhältnis risikoreich/risikoarm, optionales Rebalancing der Gesamtrate – *als Nächstes dran*
 4. **Spielgeld ETFs** (`#tab-etfs`) – nur Erfassung, Broker-Spalten, Obergrenze
 5. **Spielgeld Aktien** (`#tab-spiel`) – nur Erfassung, Einstand, Obergrenze
 6. **Übersicht Gesamt** (`#tab-gesamt`)
@@ -46,7 +47,8 @@ Reiter 2–6 speichern unter `depot-rechner-extra-v1` (Objekt `X`).
   optional „Feinausgleich“. Außerhalb: Lücken zum Ziel auffüllen (`corrected()`).
 - Jeder Baustein bekommt mindestens die Mindestrate (n Bausteine × Mindestrate ≤ Sparrate).
 - Mehrere besparte ETFs in einem Baustein: Betrag wird **gleichmäßig** aufgeteilt
-  (eine Gewichtung wurde bewusst verworfen – zu unübersichtlich).
+  (eine Gewichtung wurde bewusst verworfen – zu unübersichtlich). Gilt ebenso für mehrere
+  besparte Positionen einer Art in Reiter 2.
 
 ## Stand Reiter 1 „Risikoreich“ (abgeschlossen)
 - Beliebig viele Bausteine (max. 8), Farben aus `PALETTE` rotierend.
@@ -58,6 +60,29 @@ Reiter 2–6 speichern unter `depot-rechner-extra-v1` (Objekt `X`).
   neutrale Startwerte (Sparrate leer, Mindestrate 25 €, Band 5).
 - Reitername (`CS.tab.t1` Oberzeile, `CS.tab.t2` Name) über ✎ in der Kopfzeile des Reiters;
   wirkt auf Reiterleiste, Fazit, Gesamtübersicht, PDF, CSV.
+- `CS.zielRef` wird in `loadCore()` aus dem Speicher übernommen (fehlte früher – Ziel ging beim Neuladen verloren).
+
+## Stand Reiter 2 „Risikoarm“ (abgeschlossen)
+- Reitername `X.safeTab` (t1/t2) über ✎ wie Reiter 1. Bestehende Daten: „Altersvorsorge / Risikoarm“,
+  neue Nutzer: „Sparplan / Sicherheitsbaustein“.
+- Neue Nutzer (keine Positionen): Vorlagenauswahl (Nur Konto 100 % / Konto + Anleihen-ETF 50/50 / Leer);
+  keine Vorbelegung „Tagesgeld / DKB“ mehr.
+- Zwei Arten **Konto** (mit Zins) und **ETF / Fonds** (Kurswert); intern weiter `tg` / `anl`.
+  Ziel „Konto %“, Rest ETF / Fonds; Mindestrate **je Art**.
+- „Wird bespart“ je Position (`spar`); Betrag einer Art gleichmäßig auf ihre besparten Positionen.
+  Migration: je Art die erste Position bespart (läuft vor dem ersten Zeichnen der Karten).
+  Warnung, wenn eine Art mit Ziel keine besparte Position hat.
+- Noch keine Werte erfasst: Aufteilung nach Ziel mit ℹ️-Hinweis.
+- Steuer auf Zinsen fest 26,375 % (nur Info, kein Eingabefeld); Freibetrag `X.safeFrei` (leer = 0).
+
+## Info-Reiter und Zurücksetzen
+- Keine Werkzeugleiste mehr; Kopfzeile nur „Depot-Rechner“ + Stand. „Letzte Datenänderung“ im Infokasten.
+- Zeitpunkt der letzten Sicherung unter `depot-rechner-lastexport` (Hinweis, wenn nie oder > 30 Tage).
+- „Alle Daten zurücksetzen“: Dialog mit „Erst sichern“, dann „LÖSCHEN“ eintippen; löscht alle
+  `localStorage`-Schlüssel, die mit `depot-rechner` beginnen.
+- Reiter 1, 2, 4, 5: Link „„Name“ zurücksetzen …“ am Ende (nur dieser Reiter, mit Rückfrage);
+  ausgeblendet, wenn leer bzw. Vorlagenauswahl, sowie im PDF/Druck. Texte ohne das Wort „Reiter“.
+- Reiter Info erscheint nicht im PDF/Druck.
 
 ## UI-Konventionen
 - Bearbeiten-Muster: Ansicht mit ✎ → Felder → ✓ oder Enter bestätigt.
@@ -72,8 +97,8 @@ Reiter 2–6 speichern unter `depot-rechner-extra-v1` (Objekt `X`).
 - **Vor jeder Änderung fragen**: nichts umsetzen oder committen ohne ausdrückliche Freigabe.
 - **„commit“ heißt: committen und pushen** – auf den Arbeitszweig und nach `main` (damit die App das Update bekommt).
 - Nach jedem Schritt: kurze Rückmeldung mit Screenshot (Handy-Viewport) und Ankündigung des nächsten Schritts.
-- Vor dem Pushen Bescheid geben; nach dem Push daran erinnern, in der App „Aktualisieren“ zu tippen.
+- Nach dem Push daran erinnern, in der App „Aktualisieren“ zu tippen.
 
 ## Nächster Schritt
-Reiter 2 „Risikoarm“ analysieren: Was ist fest eingebaut (z. B. genau zwei Arten Tagesgeld/Anleihen-ETF,
-Vorbelegung „Tagesgeld / DKB“, Bezeichnungen „Altersvorsorge“) – Vorschläge machen, dann schrittweise umsetzen.
+Reiter 3 „Übersicht Altersvorsorge“ analysieren: Was ist fest eingebaut (z. B. Ziel 60/40 bis 70/30,
+„risikoreich/risikoarm“ im Fließtext, Reitername) – Vorschläge machen, dann schrittweise umsetzen.
