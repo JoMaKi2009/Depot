@@ -152,6 +152,7 @@
   body.pdf-mode .tabhead{display:none}
   @media print{ .tabhead{display:none} }
   #tab-vorsorge.setup > .tabhead{display:none}
+  #tab-safe.setup > section:not(#safeSetup), #tab-safe.setup > #safeNote, #tab-safe.setup > .tabhead{display:none !important}
   .stbox{display:block;border:1px solid;border-radius:8px;padding:10px 12px;color:var(--text);font-weight:400}
   .stbox.ok{background:var(--okbg);border-color:var(--okline)}
   .stbox.warn{background:var(--warnbg);border-color:var(--warnline)}
@@ -347,7 +348,12 @@
         <div class="eact"><button class="ico okb" id="sthOk" title="Bestätigen (Enter)" aria-label="Bestätigen">✓</button></div>
       </div>
     </div>
-    <p class="note" style="margin:0 0 14px">Sicherer Teil – Konten (z. B. Tagesgeld) und Anleihen-ETFs. Ausgleich nur über die Sparrate; die anderen Reiter fließen hier <strong>nicht</strong> ein. Name und Anbieter bzw. WKN mit ✓ oder Enter bestätigen, mit ✎ wieder bearbeiten.</p>
+    <section class="card st-info" id="safeSetup" style="display:none">
+      <h2 style="color:var(--text)">Los geht's – wie ist dein sicherer Teil aufgebaut?</h2>
+      <p class="note" style="margin:0 0 12px;color:var(--text)">Wähl eine Vorlage. Namen, Anbieter, WKNs und das Ziel kannst du danach jederzeit ändern, Positionen hinzufügen oder entfernen.</p>
+      <div class="tpls" id="safeTpls"></div>
+    </section>
+    <p class="note" style="margin:0 0 14px" id="safeNote">Sicherer Teil – Konten (z. B. Tagesgeld) und Anleihen-ETFs. Ausgleich nur über die Sparrate; die anderen Reiter fließen hier <strong>nicht</strong> ein. Name und Anbieter bzw. WKN mit ✓ oder Enter bestätigen, mit ✎ wieder bearbeiten.</p>
     <section class="card">
       <h2>Konten &amp; Anlagen (€)</h2>
       <div class="groups" id="safes"></div>
@@ -887,7 +893,7 @@ function head(k,i,name,what){
 // alte Einträge ("ETF A (WKN …)") auf Name + WKN umstellen
 if (!X.safeTab || typeof X.safeTab !== "object")          // Reitername Risikoarm: bestehende Daten behalten den alten Namen
   X.safeTab = Array.isArray(X.safe) ? {t1:"Altersvorsorge", t2:"Risikoarm"} : {t1:"Sparplan", t2:"Sicherheitsbaustein"};
-if (!Array.isArray(X.safe)) X.safe = [{name:"Tagesgeld", wkn:"DKB", saldo:0, zins:4, rate:0, locked:true}];
+if (!Array.isArray(X.safe)) X.safe = [];                  // neuer Nutzer: Vorlage wählen (früher fest „Tagesgeld / DKB“)
 if (X.tax === undefined) X.tax = 26.375;
 [...X.etfs, ...X.stocks, ...X.safe].forEach(e=>{ if (e.wkn===undefined){ e.wkn=""; e.name=(e.name||"").replace(/\s*\(WKN …\)\s*$/,""); } e.locked=!!e.locked; });
 const safeName  = () => [X.safeTab.t1, X.safeTab.t2].map(x=>(x||"").trim()).filter(Boolean).join(" – ") || "Sicherheitsbaustein";
@@ -962,6 +968,27 @@ function buildSafe(){
     <div class="sum" id="fsum${i}"></div></div>`).join("")
     : `<p class="empty">Noch keine Konten erfasst.</p>`;
 }
+const SAFE_TPL = [
+  {t:"Nur Konto",            d:"Tagesgeld o. Ä. – die ganze Sparrate geht aufs Konto.", ziel:100, p:[["Tagesgeld","tg"]]},
+  {t:"Konto + Anleihen-ETF", d:"Je zur Hälfte Konto und Anleihen-ETF.",                ziel:50,  p:[["Tagesgeld","tg"],["Anleihen-ETF","anl"]]},
+  {t:"Leer",                 d:"Ohne Vorgabe – Positionen selbst anlegen.",            ziel:50,  p:[["","tg"]]},
+];
+function renderSafeSetup(){
+  const on = X.safe.length === 0;
+  $("tab-safe").classList.toggle("setup", on); $("safeSetup").style.display = on ? "" : "none";
+  if (on && !$("safeTpls").children.length)
+    $("safeTpls").innerHTML = SAFE_TPL.map((T,i)=>`<button class="tpl" data-stpl="${i}"><span class="tt">${T.t}</span>
+      <span class="bar">${T.p[0][0] ? `<span style="width:${T.ziel}%;background:var(--c5)"></span>${T.ziel<100?`<span style="width:${100-T.ziel}%;background:var(--c6)"></span>`:""}` : ""}</span>
+      <span class="td">${T.p[0][0] ? (T.ziel<100 ? `Konto&nbsp;${T.ziel}&nbsp;% · Anleihen-ETF&nbsp;${100-T.ziel}&nbsp;%` : "Konto&nbsp;100&nbsp;%") : "Eigene Aufteilung"}</span><span class="td">${T.d}</span></button>`).join("");
+}
+function applySafeTemplate(i){
+  const T = SAFE_TPL[i];
+  X.safe = T.p.map(([name,art])=>({name, wkn:"", art, saldo:0, zins:0, locked:false}));
+  X.safePlan = Object.assign({}, X.safePlan, {ziel:T.ziel}); $("spZiel").value = T.ziel;
+  buildSafe(); touch(); renderAll();
+  document.querySelector(`input.name[data-k="safe"][data-i="0"]`)?.focus();
+}
+document.addEventListener("click", ev=>{ const b = ev.target.closest("[data-stpl]"); if (b) applySafeTemplate(+b.dataset.stpl); });
 const BUILD = {etfs:()=>buildEtfs(), stocks:()=>buildStocks(), safe:()=>buildSafe()};
 buildEtfs(); buildStocks(); buildSafe();
 if (X.mixZiel === undefined) X.mixZiel = 60;
@@ -1048,6 +1075,7 @@ function gMonths(vals, step, ok){
    VORSORGE RISIKOARM
    ========================================================= */
 function renderSafe(){
+  renderSafeSetup();
   const S = X.safe.map(s=>({...s, saldo:s.saldo||0, zins: s.art==="anl" ? 0 : (s.zins||0)}));
   const totTg = S.filter(s=>s.art!=="anl").reduce((a,s)=>a+s.saldo,0);
   const P = X.safePlan || {gesamt:0, tg:0, anl:0};
@@ -1100,13 +1128,15 @@ function renderSafe(){
   } else if (rate < m*2){
     spF = `<span class="err">Sparrate (${eur(rate)}) reicht nicht für 2 × Mindestrate (${eur(m*2)}).</span>`;
   } else {
-    const allIn = okArt(av), useCorr = !allIn || P.fine;
+    const empty = tot <= 0;                                  // noch keine Werte: Aufteilung nach Ziel
+    const allIn = empty || okArt(av), useCorr = !empty && (!allIn || P.fine);
     const a = roundTo(useCorr ? gRebal(av, tg, rate, mins) : gStd(tg, rate, mins), rate);
     spHtml = `<thead><tr><th>Art</th><th>Betrag</th><th>Anteil</th></tr></thead><tbody>` +
       ART.map((x,i)=>`<tr><td><span class="dot" style="background:${x.c}"></span><strong>${x.l}</strong></td><td class="big">${eur(a[i])}</td><td>${pct(a[i]/rate*100,1)}</td></tr>`).join("") +
       `</tbody><tfoot><tr><td>Summe</td><td>${eur(a[0]+a[1])}</td><td>${pct(100,1)}</td></tr></tfoot>`;
     const f = k => k===null ? "mehr als 50 Jahre" : (k===1 ? "1 Monat" : k+" Monaten");
-    if (!useCorr) spD = `Standardaufteilung ${pct(zt*100,0)}/${pct((1-zt)*100,0)} – beide Arten liegen im Band.`;
+    if (empty) spD = `Standardaufteilung ${pct(zt*100,0)}/${pct((1-zt)*100,0)} nach Ziel.`;
+    else if (!useCorr) spD = `Standardaufteilung ${pct(zt*100,0)}/${pct((1-zt)*100,0)} – beide Arten liegen im Band.`;
     else {
       const step = v => gRebal(v, tg, rate, mins);
       const mb = allIn ? 0 : gMonths(av, step, okArt);
@@ -1114,9 +1144,10 @@ function renderSafe(){
       spD = (allIn ? "" : `Zurück im Band nach ca. ${f(mb)}. `) + `Auf Ziel (±0,5 pp) nach ca. ${f(mz)} – Zinsen/Kurse nicht berücksichtigt, Aufteilung jeden Monat neu berechnen.`;
     }
     const lbl = `<strong>${esc(safeShort())} (Tagesgeld ${pct(zt*100,0)} / Anleihen ${pct((1-zt)*100,0)}):</strong>`;
-    spF = allIn ? (P.fine ? `✅ ${lbl} alles im Band – mit Feinausgleich die Beträge oben nutzen.` : `✅ ${lbl} alles im Band – Sparplan so lassen.`)
+    spF = empty ? `ℹ️ ${lbl} Noch keine Werte erfasst – die Sparrate wird nach Ziel aufgeteilt.`
+        : allIn ? (P.fine ? `✅ ${lbl} alles im Band – mit Feinausgleich die Beträge oben nutzen.` : `✅ ${lbl} alles im Band – Sparplan so lassen.`)
                 : `⚠️ ${lbl} Verteilung außerhalb des Bands – Sparplan auf die Beträge oben umstellen.`;
-    if (!av[1] && zt < 1) spD += ` Hinweis: Noch kein Anleihen-ETF erfasst – solange fließt die Rate (bis auf die Mindestrate) dorthin. Willst du vorerst nur Tagesgeld besparen, setze das Ziel Tagesgeld auf 100 %.`;
+    if (!empty && !av[1] && zt < 1) spD += ` Hinweis: Noch kein Anleihen-ETF erfasst – solange fließt die Rate (bis auf die Mindestrate) dorthin. Willst du vorerst nur Tagesgeld besparen, setze das Ziel Tagesgeld auf 100 %.`;
   }
   $("spTable").innerHTML = spHtml; $("spDauer").textContent = spD; $("spFazit").innerHTML = spF;
 
