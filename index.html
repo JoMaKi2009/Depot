@@ -163,6 +163,9 @@
   .zv-list{display:grid;grid-template-columns:1fr 110px;gap:8px 12px;align-items:center;margin-top:12px}
   .zv-list label{display:flex;align-items:center;gap:6px;margin:0}
   .zv-list input{margin:0}
+  .group.paused{border-color:var(--warn);background:var(--warnbg)}
+  .pause-note{display:none;margin:2px 0 8px;color:var(--warn);font-weight:600;font-size:14px}
+  .group.paused .pause-note{display:block}
   .zv-list.n3{grid-template-columns:auto 1fr 80px 32px}
   .zv-list.n3 .dot{margin:0}
   .zv-list .del{margin:0}
@@ -722,6 +725,7 @@ function buildCore(){
            <h3 style="margin:2px 0 4px"><span class="dot" style="background:${CORECOL[gi]};margin:0 8px 0 0"></span>${esc(g.name||`Baustein ${gi+1}`)}</h3>
          </div><div class="eact"><button class="ico okb" data-clock="${gi}" title="Bestätigen (Enter)" aria-label="Bestätigen">✓</button></div></div>`;
     return `<div class="group">${top}
+      <p class="pause-note">⚠️ Wird nicht bespart – pausiert (kein ETF als „wird bespart“ ausgewählt)</p>
       ${g.etfs.map((e,ei)=>coreEtf(gi,ei,e,g.etfs.length,L)).join("")}
       ${L ? "" : `<button class="add small" data-cadd="${gi}">+ ETF</button>`}
       <div class="sum" id="sum-${g.key}"></div></div>`;
@@ -895,6 +899,7 @@ function renderCore(){
   const vals = CS.groups.map(g=>g.etfs.reduce((a,e)=>a+(+e.wert||0),0));
   const D = CS.groups.reduce((a,g)=>a+g.etfs.filter(e=>e.typ==="dist").reduce((x,e)=>x+(+e.wert||0),0),0);
   CS.groups.forEach((g,i)=>{ const el=$("sum-"+g.key); if (el) el.textContent = "Summe " + eur(vals[i]); });
+  document.querySelectorAll("#groups > .group").forEach((el,i)=>el.classList.toggle("paused", !!CS.groups[i] && !CS.groups[i].etfs.some(e=>e.spar)));
   const T = vals.reduce((a,b)=>a+b,0);
   CORE = {total:T, dist:D, rate:S, alloc:null, etfAlloc:null};
 
@@ -1167,6 +1172,7 @@ function buildSafe(){
            <h3 style="margin:2px 0 4px"><span class="dot" style="background:${SCOL(gi)};margin:0 8px 0 0"></span>${esc(g.name||`Baustein ${gi+1}`)}</h3>
          </div><div class="eact"><button class="ico okb" data-slock="${gi}" title="Bestätigen (Enter)" aria-label="Bestätigen">✓</button></div></div>`;
     return `<div class="group">${top}
+      <p class="pause-note">⚠️ Wird nicht bespart – pausiert (keine Position als „wird bespart“ ausgewählt)</p>
       ${g.pos.map((q,pi)=>safePos(gi,pi,q,g.pos.length,L)).join("")}
       ${L ? "" : `<button class="add small" data-sadd="${gi}">+ Position</button>`}
       <div class="sum" id="ssum-${gi}"></div></div>`;
@@ -1390,7 +1396,7 @@ function gStd(tg, S, mins){
 function pauseNote(paused, active, ratios){
   const q = n => `„${esc(n)}“`, list = a => a.length<2 ? a.map(q).join("") : a.slice(0,-1).map(q).join(", ")+" und "+q(a[a.length-1]);
   const one = paused.length === 1;
-  return `${list(paused)} ${one?"wird":"werden"} derzeit nicht bespart (nichts als „wird bespart“ markiert) – die Sparrate geht an ${list(active)}` +
+  return `${list(paused)} ${one?"wird":"werden"} derzeit nicht bespart – die Sparrate geht an ${list(active)}` +
     (active.length>1 ? ` im Verhältnis ${ratios.map(r=>(Math.round(r*1000)/10).toLocaleString("de-DE")).join("/")}` : "") +
     `. ${list(paused)} ${one?"fällt":"fallen"} dadurch mit der Zeit unter ${one?"sein":"ihr"} Ziel.`;
 }
@@ -1454,6 +1460,7 @@ function renderSafe(){
   let spHtml = "", spD = "", spF = "";
   SAFE_ALLOC = null;
   const noSpar = G.filter(g=>!g.pos.some(q=>q.spar));
+  document.querySelectorAll("#safes > .group").forEach((el,i)=>el.classList.toggle("paused", !!G[i] && !G[i].pos.some(q=>q.spar)));
   if (!n){ /* Vorlagenauswahl */ }
   else if (!sumOk){
     spF = `⚠️ ${lbl} Die Ziele ergeben ${pct(zSum,0)} – bitte so anpassen, dass sie zusammen 100 % ergeben.`;
