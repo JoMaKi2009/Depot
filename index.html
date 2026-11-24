@@ -894,6 +894,10 @@ function head(k,i,name,what){
 if (!X.safeTab || typeof X.safeTab !== "object")          // Reitername Risikoarm: bestehende Daten behalten den alten Namen
   X.safeTab = Array.isArray(X.safe) ? {t1:"Altersvorsorge", t2:"Risikoarm"} : {t1:"Sparplan", t2:"Sicherheitsbaustein"};
 if (!Array.isArray(X.safe)) X.safe = [];                  // neuer Nutzer: Vorlage wählen (früher fest „Tagesgeld / DKB“)
+if (X.safe.some(s=>s.spar===undefined)){                        // „wird bespart“ neu: je Art die erste Position
+  const seen = {}; X.safe.forEach(s=>{ const art = s.art==="anl" ? "anl" : "tg";
+    if (s.spar===undefined) s.spar = !seen[art]; seen[art] = true; });
+}
 if (X.tax === undefined) X.tax = 26.375;
 [...X.etfs, ...X.stocks, ...X.safe].forEach(e=>{ if (e.wkn===undefined){ e.wkn=""; e.name=(e.name||"").replace(/\s*\(WKN …\)\s*$/,""); } e.locked=!!e.locked; });
 const safeName  = () => [X.safeTab.t1, X.safeTab.t2].map(x=>(x||"").trim()).filter(Boolean).join(" – ") || "Sicherheitsbaustein";
@@ -962,9 +966,11 @@ function buildSafe(){
     <label>Art<select data-k="safe" data-i="${i}" data-f="art">
       <option value="tg"${s.art!=="anl"?" selected":""}>Konto (Tagesgeld, Festgeld)</option>
       <option value="anl"${s.art==="anl"?" selected":""}>ETF / Fonds (z. B. Anleihen-ETF)</option></select></label>
+    <div class="cetf${s.spar?" sp":""}">
     ${s.art==="anl"
       ? nf("safe",i,"saldo","Depotwert (€)",s.saldo,"0.01")
       : nf("safe",i,"saldo","Kontostand (€)",s.saldo,"0.01") + nf("safe",i,"zins","Zins (% p.a.)",s.zins,"0.01")}
+    <label class="check spr"><input type="checkbox" data-k="safe" data-i="${i}" data-f="spar"${s.spar?" checked":""}> wird bespart</label></div>
     <div class="sum" id="fsum${i}"></div></div>`).join("")
     : `<p class="empty">Noch keine Konten erfasst.</p>`;
 }
@@ -983,7 +989,7 @@ function renderSafeSetup(){
 }
 function applySafeTemplate(i){
   const T = SAFE_TPL[i];
-  X.safe = T.p.map(([name,art])=>({name, wkn:"", art, saldo:0, zins:0, locked:false}));
+  X.safe = T.p.map(([name,art])=>({name, wkn:"", art, saldo:0, zins:0, spar:true, locked:false}));
   X.safePlan = Object.assign({}, X.safePlan, {ziel:T.ziel}); $("spZiel").value = T.ziel;
   buildSafe(); touch(); renderAll();
   document.querySelector(`input.name[data-k="safe"][data-i="0"]`)?.focus();
@@ -1074,6 +1080,7 @@ function gMonths(vals, step, ok){
 /* =========================================================
    VORSORGE RISIKOARM
    ========================================================= */
+let SAFE_ALLOC = [];        // Sparrate je besparter Position (für CSV)
 function renderSafe(){
   renderSafeSetup();
   const S = X.safe.map(s=>({...s, saldo:s.saldo||0, zins: s.art==="anl" ? 0 : (s.zins||0)}));
@@ -1086,13 +1093,13 @@ function renderSafe(){
   S.forEach((s,i)=>{ const el=$("fsum"+i); if(el) el.textContent = s.art!=="anl" && s.saldo&&s.zins ? `Zinsen ca. ${eur2(s.saldo*s.zins/100)} / Jahr` : ""; });
 
   bar("barSafe", S.map((s,i)=>({l:itemName("safe",s,i), v:s.saldo, c:col(i+3)})));
-  $("safeTable").innerHTML = `<thead><tr><th>Position</th><th style="text-align:left">Art</th><th>Wert</th><th>Anteil</th><th>Zins</th><th>Zinsen / Jahr</th><th>Zinsen / Monat</th></tr></thead><tbody>` +
+  $("safeTable").innerHTML = `<thead><tr><th>Position</th><th style="text-align:left">Art</th><th>Wert</th><th>Anteil</th><th>Zins</th><th>Zinsen / Jahr</th><th>Zinsen / Monat</th><th>bespart</th></tr></thead><tbody>` +
     S.map((s,i)=>{ const z=s.saldo*s.zins/100; return `<tr><td><span class="dot" style="background:${col(i+3)}"></span>${itemLabel("safe",s,i)}</td>
       <td style="text-align:left">${s.art==="anl"?"ETF / Fonds":"Konto"}</td>
       <td>${eur(s.saldo)}</td><td>${tot?pct(s.saldo/tot*100,1):"–"}</td>
-      ${s.art==="anl" ? `<td>–</td><td>–</td><td>–</td>` : `<td>${pct(s.zins)}</td><td>${eur2(z)}</td><td>${eur2(z/12)}</td>`}</tr>`; }).join("") +
+      ${s.art==="anl" ? `<td>–</td><td>–</td><td>–</td>` : `<td>${pct(s.zins)}</td><td>${eur2(z)}</td><td>${eur2(z/12)}</td>`}<td>${s.spar?"✅ ja":"– nein"}</td></tr>`; }).join("") +
     `</tbody><tfoot><tr><td>Gesamt</td><td></td><td>${eur(tot)}</td><td>${tot?pct(100,1):"–"}</td><td>${totTg?"Ø "+pct(avg):"–"}</td>
-      <td>${eur2(zj)}</td><td>${eur2(zj/12)}</td></tr></tfoot>`;
+      <td>${eur2(zj)}</td><td>${eur2(zj/12)}</td><td></td></tr></tfoot>`;
 
   // 12-Monats-Ausblick: monatliche Verzinsung mit Ø-Zins, Sparrate gesamt am Monatsende, Zins konstant, vor Steuern
   const r = avg/100/12; let fvTg = totTg; for (let m=0; m<12; m++) fvTg = fvTg*(1+r);
@@ -1115,6 +1122,9 @@ function renderSafe(){
 
   const mins = [m, m];
   let spHtml = "", spD = "", spF = "";
+  SAFE_ALLOC = [];
+  // Art mit Positionen, aber keiner als „wird bespart“ markiert (und mit Anspruch auf einen Betrag)
+  const noSpar = ART.filter((x,i)=> X.safe.some(s=>s.art===x.k) && !X.safe.some(s=>s.art===x.k && s.spar) && (tg[i]>0 || m>0));
   if (rate <= 0){
     const fromAV = X.avApplied && X.avApplied[1] === 0;
     if (fromAV){
@@ -1127,13 +1137,27 @@ function renderSafe(){
     }
   } else if (rate < m*2){
     spF = `<span class="err">Sparrate (${eur(rate)}) reicht nicht für 2 × Mindestrate (${eur(m*2)}).</span>`;
+  } else if (noSpar.length){
+    spF = `⚠️ <strong>${esc(safeShort())}:</strong> Bei ${noSpar.map(x=>x.l).join(" und ")} ist keine Position als „wird bespart“ markiert.`;
   } else {
     const empty = tot <= 0;                                  // noch keine Werte: Aufteilung nach Ziel
     const allIn = empty || okArt(av), useCorr = !empty && (!allIn || P.fine);
     const a = roundTo(useCorr ? gRebal(av, tg, rate, mins) : gStd(tg, rate, mins), rate);
-    spHtml = `<thead><tr><th>Art</th><th>Betrag</th><th>Anteil</th></tr></thead><tbody>` +
-      ART.map((x,i)=>`<tr><td><span class="dot" style="background:${x.c}"></span><strong>${x.l}</strong></td><td class="big">${eur(a[i])}</td><td>${pct(a[i]/rate*100,1)}</td></tr>`).join("") +
-      `</tbody><tfoot><tr><td>Summe</td><td>${eur(a[0]+a[1])}</td><td>${pct(100,1)}</td></tr></tfoot>`;
+    // Betrag einer Art gleichmäßig auf ihre besparten Positionen verteilen (wie Reiter 1)
+    const alloc = [];
+    ART.forEach((x,ai)=>{
+      const sp = X.safe.map((s,j)=>s.art===x.k && s.spar ? j : -1).filter(j=>j>=0);
+      if (!sp.length){ if (a[ai] > 0) alloc.push({j:-1, ai, v:a[ai]}); return; }   // Art noch ohne Position
+      const parts = roundTo(sp.map(()=>a[ai]/sp.length), a[ai]); sp.forEach((j,q)=>alloc.push({j, ai, v:parts[q]}));
+    });
+    SAFE_ALLOC = alloc.map(o=>({name: o.j<0 ? "noch keine Position erfasst" : itemName("safe",X.safe[o.j],o.j),
+                                wkn: o.j<0 ? "" : (X.safe[o.j].wkn||""), art: ART[o.ai].l, v: o.v}));
+    spHtml = `<thead><tr><th>Besparte Position</th><th style="text-align:left">Art</th><th>Betrag</th><th>Anteil</th></tr></thead><tbody>` +
+      alloc.map(o=>`<tr><td><span class="dot" style="background:${o.j<0 ? ART[o.ai].c : col(o.j+3)}"></span><strong>${o.j<0 ? "–" : itemLabel("safe",X.safe[o.j],o.j)}</strong></td>
+        <td style="text-align:left">${ART[o.ai].l}</td><td class="big">${eur(o.v)}</td><td>${pct(o.v/rate*100,1)}</td></tr>`).join("") +
+      `</tbody><tfoot><tr><td>Summe</td><td></td><td>${eur(a[0]+a[1])}</td><td>${pct(100,1)}</td></tr></tfoot>`;
+    const multi = ART.filter(x=>X.safe.filter(s=>s.art===x.k && s.spar).length > 1).map(x=>x.l);
+    const mNote = multi.length ? ` Bei ${multi.join(" und ")} werden mehrere Positionen bespart – der Betrag wird gleichmäßig aufgeteilt.` : "";
     const f = k => k===null ? "mehr als 50 Jahre" : (k===1 ? "1 Monat" : k+" Monaten");
     if (empty) spD = `Standardaufteilung ${pct(zt*100,0)}/${pct((1-zt)*100,0)} nach Ziel.`;
     else if (!useCorr) spD = `Standardaufteilung ${pct(zt*100,0)}/${pct((1-zt)*100,0)} – beide Arten liegen im Band.`;
@@ -1147,6 +1171,7 @@ function renderSafe(){
     spF = empty ? `ℹ️ ${lbl} Noch keine Werte erfasst – die Sparrate wird nach Ziel aufgeteilt.`
         : allIn ? (P.fine ? `✅ ${lbl} alles im Band – mit Feinausgleich die Beträge oben nutzen.` : `✅ ${lbl} alles im Band – Sparplan so lassen.`)
                 : `⚠️ ${lbl} Verteilung außerhalb des Bands – Sparplan auf die Beträge oben umstellen.`;
+    spD += mNote;
     if (!empty && !av[1] && zt < 1) spD += ` Hinweis: Noch kein ETF / Fonds erfasst – solange fließt die Rate (bis auf die Mindestrate) dorthin. Willst du vorerst nur das Konto besparen, setze das Ziel Konto auf 100 %.`;
   }
   $("spTable").innerHTML = spHtml; $("spDauer").textContent = spD; $("spFazit").innerHTML = spF;
@@ -1364,6 +1389,7 @@ document.addEventListener("input", e=>{
   if (k){
     const item = X[k][+t.dataset.i], f = t.dataset.f;
     if (f==="name") item.name = t.value;
+    else if (f==="spar"){ item.spar = t.checked; t.closest(".cetf")?.classList.toggle("sp", item.spar); }
     else if (f==="art"){ item.art = t.value; if (item.art==="anl") item.wkn = (item.wkn||"").toUpperCase().trim(); buildSafe(); }
     else if (f==="wkn") item.wkn = subLabel(k,item)==="WKN" ? t.value.toUpperCase().trim() : t.value;
     else { const v = parseFloat(t.value); item[f] = isFinite(v) && v>0 ? v : 0; }
@@ -1393,7 +1419,7 @@ document.addEventListener("click", e=>{
     const NEW = {
       etfs:  {name:"", wkn:"", comd:0, scal:0, rate:0, locked:false},
       stocks:{name:"", wkn:"", wert:0, anz:0, kauf:0, locked:false},
-      safe:  {name:"", wkn:"", art:"tg", saldo:0, zins:0, locked:false},
+      safe:  {name:"", wkn:"", art:"tg", saldo:0, zins:0, spar:!X.safe.some(s=>s.art==="tg"), locked:false},
     };
     X[k].push(NEW[k]);
     BUILD[k]();
@@ -1509,7 +1535,7 @@ $("expCsv").addEventListener("click", ()=>{
   const sT = X.safe.reduce((a,s)=>a+(s.saldo||0),0);
   X.safe.forEach((s,i)=>rows.push([safeName(), itemName("safe",s,i), s.wkn||"", s.art==="anl"?"ETF / Fonds":"Konto",
     n(s.saldo), sT?n((s.saldo||0)/sT*100):"", s.art==="anl"?"":n(s.zins), ""]));
-  [...document.querySelectorAll("#spTable tbody tr")].forEach(tr=>rows.push([safeName(), "Sparrate "+tr.children[0].textContent.trim(), "", "", "", "", "", tr.children[1].textContent.replace(/[^\d]/g,"")]));
+  SAFE_ALLOC.forEach(o=>rows.push([safeName(), "Sparrate – "+o.name, o.wkn, o.art, "", "", "", n(o.v)]));
   // Spielgeld ETFs
   const eT = X.etfs.reduce((a,e)=>a+e.comd+e.scal,0);
   X.etfs.forEach((e,i)=>{
