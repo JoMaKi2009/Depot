@@ -78,6 +78,9 @@ Reiter 2–6 speichern unter `depot-rechner-extra-v1` (Objekt `X`).
 - Migrationen (vor dem ersten Zeichnen der Karten): alte flache Liste `X.safe` + Ziel „Konto %“
   → Bausteine „Konto“ und „ETF / Fonds“ (auch beim Import alter Sicherungen); Feld `art` wird
   entfernt, ehemalige ETF-Positionen ohne Zins.
+- **Zielverteilung** (`#safeZiel`, Karte vor „Bausteine & Positionen“) mit ✎/✓: Ziel % je Baustein **nur dort**
+  (`buildSafeZiel()`/`renderSafeZiel()`), Summe live, Bestätigen nur bei 100 %; Hinweis bei Summe ≠ 100 % und bei
+  Bausteinen mit 0 %. Baustein-Karten zeigen kein Ziel mehr. In der Vorlagenauswahl ausgeblendet.
 - Steuer auf Zinsen fest 26,375 % (nur Info, kein Eingabefeld); Freibetrag `X.safeFrei` (leer = 0).
 
 ## Info-Reiter und Zurücksetzen
@@ -128,7 +131,6 @@ Reiter 2–6 speichern unter `depot-rechner-extra-v1` (Objekt `X`).
   Ist-Verteilung und Sparrate-Aufteilung (`.av-hide`) aus; Fazit zeigt ℹ️-Hinweis mit Links zu Reiter 1/2.
 
 ## Nächster Schritt
-Karte „Zielverteilung“ oben auch in Reiter 2 und Reiter 1 (gleiches Muster wie Reiter 3; Ziel nur noch dort
-eingeben, in den Baustein-Karten nur Anzeige). In Reiter 1 die Warnkarte „Als neues Ziel festlegen / Auf festgelegtes
+Karte „Zielverteilung“ oben auch in Reiter 1 (wie Reiter 2: Ziel nur dort eingeben, Baustein-Karten ohne Ziel). In Reiter 1 die Warnkarte „Als neues Ziel festlegen / Auf festgelegtes
 Ziel zurücksetzen“ **behalten** (Wunsch Nutzerin/Nutzer). Danach Reiter 4 „Spielgeld ETFs“ analysieren
 (feste Broker-Spalten comdirect/Scalable, „Spielgeld ETFs (Scalable)“ in Reiter 6). Offen (klein): „-0,00“ / „-0 €“.

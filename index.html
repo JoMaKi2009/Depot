@@ -160,6 +160,11 @@
   .zv-row{display:flex;align-items:flex-end;gap:10px;margin-top:12px}
   .zv-row > div{flex:1}
   .zv-rest{margin:0 0 12px;white-space:nowrap}
+  .zv-list{display:grid;grid-template-columns:1fr 110px;gap:8px 12px;align-items:center;margin-top:12px}
+  .zv-list label{display:flex;align-items:center;gap:6px;margin:0}
+  .zv-list input{margin:0}
+  .zv-foot{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:12px}
+  .zv-foot p{margin:0}
   #tab-safe.setup > section:not(#safeSetup), #tab-safe.setup > #safeNote, #tab-safe.setup > .tabhead{display:none !important}
   .stbox{display:block;border:1px solid;border-radius:8px;padding:10px 12px;color:var(--text);font-weight:400}
   .stbox.ok{background:var(--okbg);border-color:var(--okline)}
@@ -362,6 +367,16 @@
       <div class="tpls" id="safeTpls"></div>
     </section>
     <p class="note" style="margin:0 0 14px" id="safeNote">Sicherer Teil – Konten (z. B. Tagesgeld, Festgeld) und ETFs / Fonds (z. B. Anleihen- oder Geldmarkt-ETF). Ausgleich nur über die Sparrate; die anderen Reiter fließen hier <strong>nicht</strong> ein. Bausteine mit ✎ bearbeiten, mit ✓ oder Enter bestätigen.</p>
+    <section class="card zv-card" id="safeZiel">
+      <div class="zv-head"><h2>Zielverteilung</h2>
+        <button class="ico" id="safeZielEdit" title="Ziel bearbeiten" aria-label="Ziel bearbeiten">✎</button></div>
+      <div class="zv-view"><div class="bar" id="barSafeZiel"></div><p class="note" id="safeZielTxt"></p></div>
+      <div class="zv-edit">
+        <div class="zv-list" id="safeZielList"></div>
+        <div class="zv-foot"><p class="note" id="safeZielSum"></p>
+          <button class="ico okb" id="safeZielOk" title="Bestätigen (Enter)" aria-label="Bestätigen">✓</button></div>
+      </div>
+    </section>
     <section class="card">
       <h2>Bausteine &amp; Positionen (€)</h2>
       <div class="groups" id="safes"></div>
@@ -1064,11 +1079,9 @@ function buildSafe(){
     const top = L
       ? `<div class="ehead"><div class="efields">
            <h3 style="margin:2px 0 4px"><span class="dot" style="background:${SCOL(gi)};margin:0 8px 0 0"></span>${esc(g.name)}</h3>
-           <div class="inl"><span>Ziel</span><span class="rov">${+g.ziel||0} %</span></div>
-         </div><div class="eact"><button class="ico" data-sedit="${gi}" title="Baustein bearbeiten (Name, Ziel, Positionen)" aria-label="Bearbeiten">✎</button></div></div>`
+         </div><div class="eact"><button class="ico" data-sedit="${gi}" title="Baustein bearbeiten (Name, Positionen)" aria-label="Bearbeiten">✎</button></div></div>`
       : `<div class="ehead"><div class="efields">
            <label class="inl"><span><span class="dot" style="background:${SCOL(gi)};margin-right:4px"></span>Name</span><input type="text" class="name" data-s="gname" data-g="${gi}" value="${esc(g.name)}" placeholder="Baustein"></label>
-           <label class="inl">Ziel (%)<input type="number" inputmode="decimal" min="0" max="100" step="1" data-s="ziel" data-g="${gi}" value="${g.ziel}"></label>
          </div><div class="eact"><button class="ico okb" data-slock="${gi}" title="Bestätigen (Enter)" aria-label="Bestätigen">✓</button>${X.sg.length>1?`<button class="del" data-sgdel="${gi}" title="Baustein entfernen" aria-label="Baustein entfernen">×</button>`:""}</div></div>`;
     return `<div class="group">${top}
       ${g.pos.map((q,pi)=>safePos(gi,pi,q,g.pos.length,L)).join("")}
@@ -1077,6 +1090,33 @@ function buildSafe(){
   }).join("");
   const b = $("sgadd"); b.disabled = X.sg.length>=MAXG; b.textContent = X.sg.length>=MAXG ? `Maximal ${MAXG} Bausteine` : "+ Baustein hinzufügen";
 }
+/* Karte „Zielverteilung“ Reiter 2: Ziel % je Baustein nur hier eingeben */
+const sZielSum = () => X.sg.reduce((a,g)=>a+(+g.ziel||0),0);
+function buildSafeZiel(){                 // Eingabefelder (nur beim Öffnen neu aufbauen, sonst springt der Fokus)
+  $("safeZielList").innerHTML = X.sg.map((g,gi)=>`<label for="szt-${gi}"><span class="dot" style="background:${SCOL(gi)}"></span>${esc(g.name||`Baustein ${gi+1}`)}</label>
+    <input type="number" inputmode="decimal" min="0" max="100" step="1" id="szt-${gi}" data-szt="${gi}" value="${+g.ziel||0}" aria-label="Ziel % ${esc(g.name||"")}">`).join("");
+}
+function renderSafeZiel(){
+  const sum = sZielSum(), ok = Math.abs(sum-100) < 0.001, band = (X.safePlan && X.safePlan.band) || 0;
+  bar("barSafeZiel", X.sg.map((g,gi)=>({l:esc(g.name||`Baustein ${gi+1}`), v:+g.ziel||0, c:SCOL(gi)})));
+  $("safeZielTxt").innerHTML = !X.sg.length ? "" : ok
+    ? `Toleranzband ± ${band.toLocaleString("de-DE")} pp je Baustein.` +
+      (X.sg.some(g=>!(+g.ziel)) ? `<br>ℹ️ ${X.sg.filter(g=>!(+g.ziel)).map(g=>`„${esc(g.name||"ohne Namen")}“`).join(", ")} hat noch kein Ziel (0 %) – mit ✎ anpassen.` : "")
+    : `<span class="warn">⚠️ Die Ziele ergeben ${pct(sum,0)} statt 100 % – mit ✎ anpassen.</span>`;
+  $("safeZielSum").innerHTML = ok ? `Summe ${pct(sum,0)} ✅` : `<span class="warn">Summe ${pct(sum,0)} – ${sum<100?`noch ${pct(100-sum,0)} verteilen`:`${pct(sum-100,0)} zu viel`}</span>`;
+}
+function safeZielEdit(on){
+  if (on){ buildSafeZiel(); $("safeZiel").classList.add("editing"); renderSafeZiel(); $("szt-0")?.focus(); return; }
+  if (Math.abs(sZielSum()-100) >= 0.001){ renderSafeZiel(); return; }        // nur mit Summe 100 % schließen
+  $("safeZiel").classList.remove("editing"); buildSafe(); touch(); renderAll();
+}
+document.addEventListener("click", ev=>{
+  if (ev.target.closest("#safeZielEdit")) safeZielEdit(true);
+  else if (ev.target.closest("#safeZielOk")) safeZielEdit(false);
+});
+document.addEventListener("input", ev=>{ const t = ev.target; if (t.dataset.szt === undefined) return;
+  X.sg[+t.dataset.szt].ziel = Math.max(0, +t.value || 0); });
+document.addEventListener("keydown", ev=>{ if (ev.key==="Enter" && ev.target.dataset.szt !== undefined){ ev.preventDefault(); safeZielEdit(false); } });
 function safeLock(gi, on){
   const g = X.sg[gi];
   if (on){
@@ -1191,7 +1231,7 @@ function renderExtra(){
   X.safeFrei = Math.max(0, num("spFrei"));
   $("resetEtfs").parentNode.style.display = X.etfs.length ? "" : "none";
   $("resetStocks").parentNode.style.display = X.stocks.length ? "" : "none";
-  X.safeTab = {t1:$("safeT1").value, t2:$("safeT2").value}; renderSafeName();
+  X.safeTab = {t1:$("safeT1").value, t2:$("safeT2").value}; renderSafeName(); renderSafeZiel();
   X.avTab = {t1:$("avT1").value, t2:$("avT2").value}; renderAvName();
   save(XSTORE, X);
 
