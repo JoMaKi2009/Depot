@@ -65,14 +65,18 @@ Reiter 2–6 speichern unter `depot-rechner-extra-v1` (Objekt `X`).
 ## Stand Reiter 2 „Risikoarm“ (abgeschlossen)
 - Reitername `X.safeTab` (t1/t2) über ✎ wie Reiter 1. Bestehende Daten: „Altersvorsorge / Risikoarm“,
   neue Nutzer: „Sparplan / Sicherheitsbaustein“.
-- Neue Nutzer (keine Positionen): Vorlagenauswahl (Nur Konto 100 % / Konto + Anleihen-ETF 50/50 / Leer);
-  keine Vorbelegung „Tagesgeld / DKB“ mehr.
-- Zwei Arten **Konto** (mit Zins) und **ETF / Fonds** (Kurswert); intern weiter `tg` / `anl`.
-  Ziel „Konto %“, Rest ETF / Fonds; Mindestrate **je Art**.
-- „Wird bespart“ je Position (`spar`); Betrag einer Art gleichmäßig auf ihre besparten Positionen.
-  Migration: je Art die erste Position bespart (läuft vor dem ersten Zeichnen der Karten).
-  Warnung, wenn eine Art mit Ziel keine besparte Position hat.
-- Noch keine Werte erfasst: Aufteilung nach Ziel mit ℹ️-Hinweis.
+- **Bausteine** `X.sg` (max. 8) mit Name und Ziel %, Bearbeiten-Muster ✎/✓ wie Reiter 1.
+  Kein festgelegtes Ziel (`zielRef`) – vorerst bewusst weggelassen.
+- **Positionen** `pos` je Baustein: Name, Anbieter / WKN, Wert, Zins (leer = kein Zins), „wird bespart“.
+  **Keine „Art“** (Konto/ETF) mehr; verzinst wird jede Position mit Zins > 0 (Ø-Zins, Steuer, 12-Monats-Vorschau).
+- Rebalancing je Baustein (`gRebal`/`gStd`/`gMonths`, n-stellig), Toleranzband, Feinausgleich,
+  Mindestrate **je Baustein**; Betrag eines Bausteins gleichmäßig auf seine besparten Positionen.
+  Warnungen: Zielsumme ≠ 100 %, Baustein ohne besparte Position, Sparrate < n × Mindestrate.
+- Neue Nutzer (keine Bausteine): Vorlagenauswahl (Nur Konto / Konto + Anleihen-ETF /
+  Tagesgeld + Festgeld + Anleihen-ETF / Leer). Noch keine Werte: Aufteilung nach Ziel mit ℹ️-Hinweis.
+- Migrationen (vor dem ersten Zeichnen der Karten): alte flache Liste `X.safe` + Ziel „Konto %“
+  → Bausteine „Konto“ und „ETF / Fonds“ (auch beim Import alter Sicherungen); Feld `art` wird
+  entfernt, ehemalige ETF-Positionen ohne Zins.
 - Steuer auf Zinsen fest 26,375 % (nur Info, kein Eingabefeld); Freibetrag `X.safeFrei` (leer = 0).
 
 ## Info-Reiter und Zurücksetzen
