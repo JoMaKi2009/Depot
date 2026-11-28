@@ -613,12 +613,13 @@
 <script src="html2pdf.bundle.min.js" defer></script>
 <script>
 /* ---------- Hilfsfunktionen ---------- */
-const eur = n => n.toLocaleString("de-DE",{maximumFractionDigits:0}) + " €";
-const pct = (n,d=2) => n.toLocaleString("de-DE",{minimumFractionDigits:d,maximumFractionDigits:d}) + " %";
-const pp  = n => (n>0?"+":"") + n.toLocaleString("de-DE",{minimumFractionDigits:2,maximumFractionDigits:2});
-const eur2 = n => n.toLocaleString("de-DE",{minimumFractionDigits:2,maximumFractionDigits:2}) + " €";
+const z0  = (n,d) => Math.abs(n) < 0.5/10**d ? 0 : n;      // rundet auf 0 → ohne Vorzeichen (kein „-0 €“ / „-0,00“)
+const eur = n => z0(n,0).toLocaleString("de-DE",{maximumFractionDigits:0}) + " €";
+const pct = (n,d=2) => z0(n,d).toLocaleString("de-DE",{minimumFractionDigits:d,maximumFractionDigits:d}) + " %";
+const pp  = n => (z0(n,2)>0?"+":"") + z0(n,2).toLocaleString("de-DE",{minimumFractionDigits:2,maximumFractionDigits:2});
+const eur2 = n => z0(n,2).toLocaleString("de-DE",{minimumFractionDigits:2,maximumFractionDigits:2}) + " €";
 const stk = n => n.toLocaleString("de-DE",{maximumFractionDigits:4});
-const signEur = n =>(n>0?"+":"") + eur(n);
+const signEur = n =>(z0(n,0)>0?"+":"") + eur(n);
 const num = id => { const el=document.getElementById(id); const v = el ? parseFloat(el.value) : NaN; return isFinite(v) ? v : 0; };
 const $ = id => document.getElementById(id);
 const esc = s => String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
