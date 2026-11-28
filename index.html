@@ -175,6 +175,8 @@
   .zv-list.n3{grid-template-columns:auto 1fr 80px 32px}
   .zv-list.n3 .dot{margin:0}
   .zv-list .del{margin:0}
+  .zv-prod{display:flex;flex-direction:column;gap:6px;min-width:0}
+  .zv-prod select,.zv-prod input{margin:0;width:100%}
   .zv-foot{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:12px}
   .zv-foot p{margin:0}
   #tab-safe.setup > section:not(#safeSetup), #tab-safe.setup > #safeNote, #tab-safe.setup > .tabhead{display:none !important}
@@ -1149,19 +1151,36 @@ function buildStocks(){
 const SCOL = gi => PALETTE[(gi+3) % PALETTE.length];
 const posName = (q,pi) => (q.name||"").trim() || `Position ${pi+1}`;
 const posLabel = (q,pi) => esc(posName(q,pi)) + (q.wkn ? `<span class="wk">${esc(q.wkn)}</span>` : "");
+// Produkt je Baustein (in der Zielverteilung gewählt): bestimmt Name und Felder der Positionen
+const PT = {
+  tg:    {l:"Tagesgeld / Konto", who:"Bank", ph:"z. B. Bank X",           sub:null,             wert:"Kontostand (€)", zins:"Zins (%)",   zph:"0",                due:false, spar:true},
+  fg:    {l:"Festgeld",          who:"Bank", ph:"z. B. Bank X",           sub:null,             wert:"Betrag (€)",     zins:"Zins (%)",   zph:"0",                due:true,  spar:false},
+  aetf:  {l:"Anleihen-ETFs",     who:"Name", ph:"z. B. Staatsanleihen €", sub:"WKN",            wert:"Wert (€)",       zins:null,                                 due:false, spar:true},
+  anl:   {l:"Anleihen",          who:"Name", ph:"z. B. Bundesanleihe",    sub:"WKN",            wert:"Wert (€)",       zins:"Kupon (%)",  zph:"0",                due:true,  spar:false},
+  sonst: {l:"Sonstiges",         who:"Name", ph:"z. B. Geldmarkt-ETF",    sub:"Anbieter / WKN", wert:"Wert (€)",       zins:"Zins (%)",   zph:"leer = kein Zins", due:false, spar:true},
+};
+const PT_KEYS = ["tg","fg","aetf","anl","sonst"];
+const ptOf = g => PT[g && g.typ] || PT.sonst;
+const usedTypes = skip => new Set(X.sg.filter((g,i)=>i!==skip && g.typ!=="sonst").map(g=>g.typ));
+const newPos = typ => ({name:"", wkn:"", saldo:0, zins:0, due:"", spar:(PT[typ]||PT.sonst).spar});
+const deDate = d => { const x = new Date(d+"T00:00:00"); return isNaN(x) ? "" : x.toLocaleDateString("de-DE",{day:"2-digit",month:"2-digit",year:"numeric"}); };
+const dueDays = d => { const x = new Date(d+"T00:00:00"); if (isNaN(x)) return null; const t = new Date(); t.setHours(0,0,0,0); return Math.round((x - t)/86400000); };
+const dueNote = d => { const k = d ? dueDays(d) : null; if (k===null || k > 90) return "";
+  return k < 0 ? `ℹ️ fällig seit ${deDate(d)}` : k === 0 ? `ℹ️ heute fällig` : `ℹ️ fällig in ${k} Tag${k===1?"":"en"} (${deDate(d)})`; };
 function safePos(gi, pi, q, n, L){
-  const a = `data-g="${gi}" data-p="${pi}"`;
+  const a = `data-g="${gi}" data-p="${pi}"`, T = ptOf(X.sg[gi]);
   const head = L
-    ? `<div class="inl"><span>Name</span><span class="rov">${esc(q.name)||"–"}</span></div>
-       <div class="inl"><span>Anbieter / WKN</span><span class="rov">${esc(q.wkn)||"–"}</span></div>`
+    ? `<div class="inl"><span>${T.who}</span><span class="rov">${esc(q.name)||"–"}</span></div>
+       ${T.sub ? `<div class="inl"><span>${T.sub}</span><span class="rov">${esc(q.wkn)||"–"}</span></div>` : ""}`
     : `<div class="ehead"><div class="efields">
-         <label class="inl">Name<input type="text" data-s="pname" ${a} value="${esc(q.name)}" placeholder="z. B. Tagesgeld"></label>
-         <label class="inl">Anbieter / WKN<input type="text" data-s="wkn" ${a} value="${esc(q.wkn)}" placeholder="Bank oder WKN" maxlength="40"></label>
+         <label class="inl">${T.who}<input type="text" data-s="pname" ${a} value="${esc(q.name)}" placeholder="${T.ph}"></label>
+         ${T.sub ? `<label class="inl">${T.sub}<input type="text"${T.sub==="WKN"?' class="wkn"':""} data-s="wkn" ${a} value="${esc(q.wkn)}" placeholder="${T.sub}" maxlength="40"></label>` : ""}
        </div>${n>1?`<div class="eact"><button class="del" data-sdel="${gi}:${pi}" title="Position entfernen" aria-label="Position entfernen">×</button></div>`:""}</div>`;
   return `<div class="cetf${q.spar?" sp":""}">
     ${head}
-    <label class="inl">Wert (€)<input type="number" inputmode="decimal" min="0" step="0.01" data-s="saldo" ${a} value="${q.saldo||""}" placeholder="0"></label>
-    <label class="inl">Zins (%)<input type="number" inputmode="decimal" min="0" step="0.01" data-s="zins" ${a} value="${q.zins||""}" placeholder="leer = kein Zins"></label>
+    <label class="inl">${T.wert}<input type="number" inputmode="decimal" min="0" step="0.01" data-s="saldo" ${a} value="${q.saldo||""}" placeholder="0"></label>
+    ${T.zins ? `<label class="inl">${T.zins}<input type="number" inputmode="decimal" min="0" step="0.01" data-s="zins" ${a} value="${q.zins||""}" placeholder="${T.zph}"></label>` : ""}
+    ${T.due ? `<label class="inl">Fällig am<input type="date" data-s="due" ${a} value="${esc(q.due||"")}"></label>` : ""}
     <label class="check spr"><input type="checkbox" data-s="spar" ${a}${q.spar?" checked":""}> wird bespart</label>
     <div class="sum" id="psum-${gi}-${pi}" style="margin-top:4px"></div>
   </div>`;
@@ -1188,10 +1207,13 @@ function buildSafe(){
 const sZielSum = () => X.sg.reduce((a,g)=>a+(+g.ziel||0),0);
 function buildSafeZiel(){                 // Eingabefelder (nur beim Öffnen neu aufbauen, sonst springt der Fokus)
   $("safeZielList").className = "zv-list n3";
-  $("safeZielList").innerHTML = X.sg.map((g,gi)=>`<span class="dot" style="background:${SCOL(gi)}"></span>
-    <input type="text" class="name" id="szn-${gi}" data-szn="${gi}" value="${esc(g.name)}" placeholder="Name Baustein ${gi+1}" aria-label="Name Baustein ${gi+1}">
+  $("safeZielList").innerHTML = X.sg.map((g,gi)=>{ const used = usedTypes(gi);
+    return `<span class="dot" style="background:${SCOL(gi)}"></span>
+    <span class="zv-prod"><select id="szp-${gi}" data-szp="${gi}" aria-label="Produkt Baustein ${gi+1}">${
+      PT_KEYS.map(k=>`<option value="${k}"${g.typ===k?" selected":""}${used.has(k)?" disabled":""}>${PT[k].l}${used.has(k)?" (schon vorhanden)":""}</option>`).join("")}</select>
+    ${g.typ==="sonst" ? `<input type="text" class="name" id="szn-${gi}" data-szn="${gi}" value="${esc(g.name)}" placeholder="Name, z. B. Geldmarkt" aria-label="Name Baustein ${gi+1}">` : ""}</span>
     <input type="number" inputmode="decimal" min="0" max="100" step="1" id="szt-${gi}" data-szt="${gi}" value="${+g.ziel||0}" aria-label="Ziel % Baustein ${gi+1}">
-    ${X.sg.length>1 ? `<button class="del" data-szdel="${gi}" title="Baustein entfernen" aria-label="Baustein entfernen">×</button>` : "<span></span>"}`).join("") +
+    ${X.sg.length>1 ? `<button class="del" data-szdel="${gi}" title="Baustein entfernen" aria-label="Baustein entfernen">×</button>` : "<span></span>"}`; }).join("") +
     `<button class="add small" id="szAdd" style="grid-column:1/-1">+ Baustein hinzufügen</button>`;
   const b = $("szAdd"); b.disabled = X.sg.length>=MAXG; if (b.disabled) b.textContent = `Maximal ${MAXG} Bausteine`;
 }
@@ -1206,8 +1228,8 @@ function renderSafeZiel(){
 function safeZielEdit(on){
   const noName = () => X.sg.findIndex(g=>!(g.name||"").trim());
   if (on){ buildSafeZiel(); $("safeZiel").classList.add("editing"); renderSafeZiel();
-    (noName() >= 0 ? $("szn-"+noName()) : $("szt-0"))?.focus(); return; }
-  if (noName() >= 0){ $("szn-"+noName())?.focus(); return; }                // jeder Baustein braucht einen Namen
+    (noName() >= 0 ? ($("szn-"+noName()) || $("szp-"+noName())) : $("szt-0"))?.focus(); return; }
+  if (noName() >= 0){ ($("szn-"+noName()) || $("szp-"+noName()))?.focus(); return; }   // jeder Baustein braucht einen Namen
   if (Math.abs(sZielSum()-100) >= 0.001){ renderSafeZiel(); return; }        // nur mit Summe 100 % schließen
   $("safeZiel").classList.remove("editing"); buildSafe(); touch(); renderAll();
 }
@@ -1219,6 +1241,11 @@ document.addEventListener("input", ev=>{ const t = ev.target; if (t.dataset.szt 
   X.sg[+t.dataset.szt].ziel = Math.max(0, +t.value || 0); });
 document.addEventListener("input", ev=>{ const t = ev.target; if (t.dataset.szn === undefined) return;
   X.sg[+t.dataset.szn].name = t.value; });
+document.addEventListener("change", ev=>{ const t = ev.target; if (t.dataset.szp === undefined) return;   // Produkt gewählt
+  const gi = +t.dataset.szp, g = X.sg[gi];
+  g.typ = t.value; g.name = g.typ==="sonst" ? "" : PT[g.typ].l;
+  buildSafeZiel(); renderSafeZiel(); buildSafe(); touch(); renderAll();
+  ($("szn-"+gi) || $("szt-"+gi))?.focus(); });
 document.addEventListener("keydown", ev=>{ if (ev.key==="Enter" && (ev.target.dataset.szt !== undefined || ev.target.dataset.szn !== undefined)){ ev.preventDefault(); safeZielEdit(false); } });
 document.addEventListener("click", ev=>{
   const del = ev.target.closest("[data-szdel]");
@@ -1229,8 +1256,9 @@ document.addEventListener("click", ev=>{
   }
   if (ev.target.closest("#szAdd")){
     if (X.sg.length >= MAXG) return;
-    X.sg.push({key:"S"+Date.now().toString(36), name:"", ziel:0, locked:false, pos:[{name:"", wkn:"", saldo:0, zins:0, spar:true}]});
-    buildSafeZiel(); buildSafe(); touch(); renderAll(); $("szn-"+(X.sg.length-1))?.focus();
+    const used = usedTypes(-1), typ = ["tg","fg","aetf","anl"].find(k=>!used.has(k)) || "sonst";
+    X.sg.push({key:"S"+Date.now().toString(36), typ, name: typ==="sonst" ? "" : PT[typ].l, ziel:0, locked:false, pos:[newPos(typ)]});
+    buildSafeZiel(); buildSafe(); touch(); renderAll(); ($("szn-"+(X.sg.length-1)) || $("szp-"+(X.sg.length-1)))?.focus();
   }
 });
 function safeLock(gi, on){
@@ -1251,6 +1279,7 @@ document.addEventListener("input", ev=>{          // läuft vor dem allgemeinen 
   const q = g.pos[+t.dataset.p];
   if (c==="pname") q.name = t.value;
   else if (c==="wkn") q.wkn = t.value;
+  else if (c==="due") q.due = t.value;
   else if (c==="saldo" || c==="zins") q[c] = Math.max(0, +t.value || 0);
   else if (c==="spar"){ q.spar = t.checked; t.closest(".cetf").classList.toggle("sp", q.spar); }
 });
@@ -1274,8 +1303,8 @@ document.addEventListener("click", ev=>{
     X.sg.splice(gi,1);
   }
   else if (b.dataset.sadd !== undefined){
-    const g = X.sg[+b.dataset.sadd], prev = g.pos[g.pos.length-1];
-    g.pos.push({name:"", wkn:"", saldo:0, zins:0, spar:false});
+    const g = X.sg[+b.dataset.sadd];
+    g.pos.push({...newPos(g.typ), spar:false});
     buildSafe(); touch(); renderAll();
     [...document.querySelectorAll(`[data-s="pname"][data-g="${b.dataset.sadd}"]`)].pop()?.focus();
     return;
@@ -1286,30 +1315,46 @@ document.addEventListener("click", ev=>{
   buildSafe(); touch(); renderAll();
 });
 const SAFE_TPL = [
-  {t:"Nur Konto",              d:"Tagesgeld o. Ä. – die ganze Sparrate geht aufs Konto.", g:[["Tagesgeld",100]]},
-  {t:"Konto + Anleihen-ETF",   d:"Je zur Hälfte Konto und Anleihen-ETF.",                g:[["Tagesgeld",50],["Anleihen-ETF",50]]},
-  {t:"Tagesgeld + Festgeld + Anleihen-ETF", d:"Flexibel, fest angelegt und Anleihen.",    g:[["Tagesgeld",40],["Festgeld",20],["Anleihen-ETF",40]]},
-  {t:"Leer",                   d:"Ohne Vorgabe – Bausteine selbst anlegen.",             g:[["",100]]},
+  {t:"Nur Tagesgeld",                        d:"Die ganze Sparrate geht aufs Tagesgeld.",              g:[["tg",100]]},
+  {t:"Tagesgeld + Anleihen-ETFs",            d:"Je zur Hälfte Tagesgeld und Anleihen-ETFs.",           g:[["tg",50],["aetf",50]]},
+  {t:"Tagesgeld + Festgeld + Anleihen-ETFs", d:"Flexibel, fest angelegt (Einmalanlage) und Anleihen.", g:[["tg",40],["fg",20],["aetf",40]]},
+  {t:"Leer",                                 d:"Ohne Vorgabe – Bausteine selbst anlegen.",             g:[["sonst",100]], leer:true},
 ];
 function renderSafeSetup(){
   const on = X.sg.length === 0;
   $("tab-safe").classList.toggle("setup", on); $("safeSetup").style.display = on ? "" : "none";
   if (on && !$("safeTpls").children.length)
     $("safeTpls").innerHTML = SAFE_TPL.map((T,i)=>`<button class="tpl" data-stpl="${i}"><span class="tt">${T.t}</span>
-      <span class="bar">${T.g[0][0] ? T.g.map(([n,z],k)=>`<span style="width:${z}%;background:${SCOL(k)}"></span>`).join("") : ""}</span>
-      <span class="td">${T.g[0][0] ? T.g.map(([n,z])=>`${n}&nbsp;${z}&nbsp;%`).join(" · ") : "Eigene Aufteilung"}</span><span class="td">${T.d}</span></button>`).join("");
+      <span class="bar">${T.leer ? "" : T.g.map(([k,z],j)=>`<span style="width:${z}%;background:${SCOL(j)}"></span>`).join("")}</span>
+      <span class="td">${T.leer ? "Eigene Aufteilung" : T.g.map(([k,z])=>`${PT[k].l}&nbsp;${z}&nbsp;%`).join(" · ")}</span><span class="td">${T.d}</span></button>`).join("");
 }
 function applySafeTemplate(i){
   const T = SAFE_TPL[i], stamp = Date.now().toString(36);
-  X.sg = T.g.map(([name,ziel],k)=>({key:`S${k}${stamp}`, name, ziel, locked:false,
-    pos:[{name, wkn:"", saldo:0, zins:0, spar:true}]}));
+  X.sg = T.g.map(([typ,ziel],k)=>({key:`S${k}${stamp}`, typ, name: typ==="sonst" ? "" : PT[typ].l, ziel, locked:false, pos:[newPos(typ)]}));
   buildSafe(); touch(); renderAll();
-  if (T.g[0][0]) document.querySelector(`[data-s="wkn"][data-g="0"]`)?.focus();
-  else safeZielEdit(true);                              // „Leer“: Bausteine oben benennen
+  if (!T.leer) document.querySelector(`[data-s="pname"][data-g="0"]`)?.focus();
+  else safeZielEdit(true);                              // „Leer“: Produkt oben wählen
 }
 document.addEventListener("click", ev=>{ const b = ev.target.closest("[data-stpl]"); if (b) applySafeTemplate(+b.dataset.stpl); });
 const BUILD = {etfs:()=>buildEtfs(), stocks:()=>buildStocks(), safe:()=>buildSafe()};
 X.sg.forEach(g=>g.pos.forEach(q=>{ if (q.art==="anl") q.zins = 0; delete q.art; }));   // „Art“ entfällt: Zins leer = kein Zins
+{ // Produkt je Baustein (typ): bekannte Namen zuordnen, sonst „Sonstiges“ mit eigenem Namen; jedes Produkt nur einmal
+  const MAP = {"konto":"tg", "tagesgeld":"tg", "tagesgeld / konto":"tg", "festgeld":"fg", "etf":"aetf", "etfs":"aetf", "etf / fonds":"aetf",
+               "anleihen-etf":"aetf", "anleihen-etfs":"aetf", "anleihen etf":"aetf", "anleihen":"anl"};
+  const used = new Set();
+  X.sg.forEach(g=>{
+    let t = PT[g.typ] ? g.typ : (MAP[(g.name||"").trim().toLowerCase()] || "sonst");
+    if (t!=="sonst" && used.has(t)) t = "sonst";
+    g.typ = t; if (t!=="sonst"){ g.name = PT[t].l; used.add(t); }
+    g.pos.forEach(q=>{ if (q.due===undefined) q.due = "";
+      // Tagesgeld/Festgeld haben nur das Feld „Bank“ (= name): bisherigen Anbieter (wkn) übernehmen
+      if ((t==="tg" || t==="fg") && (q.wkn||"").trim()){
+        const nm = (q.name||"").trim(), bank = q.wkn.trim();
+        q.name = !nm || /^(tagesgeld|konto|festgeld)$/i.test(nm) ? bank : `${bank} (${nm})`; q.wkn = "";
+      }
+    });
+  });
+}
 buildEtfs(); buildStocks(); buildSafe();
 // Übersicht: früher Ziel + „darf tendieren bis“ → jetzt Ziel ± Toleranzband (Mitte und halbe Breite des alten Korridors)
 if (X.mixBand === undefined){
@@ -1420,7 +1465,7 @@ let SAFE_ALLOC = null;      // Sparrate je Position [Baustein][Position] (für C
 function renderSafe(){
   renderSafeSetup();
   const G = X.sg, P = X.safePlan, rate = P.gesamt, band = P.band/100, m = Math.round(P.min);
-  const POS = []; G.forEach((g,gi)=>g.pos.forEach((q,pi)=>POS.push({gi, pi, q, saldo:+q.saldo||0, zins:+q.zins||0})));
+  const POS = []; G.forEach((g,gi)=>g.pos.forEach((q,pi)=>POS.push({gi, pi, q, saldo:+q.saldo||0, zins: ptOf(g).zins ? (+q.zins||0) : 0})));
   const vals = G.map(g=>g.pos.reduce((a,q)=>a+(+q.saldo||0),0));
   const tot = vals.reduce((a,b)=>a+b,0);
   const totTg = POS.filter(o=>o.zins>0).reduce((a,o)=>a+o.saldo,0);     // verzinste Positionen
@@ -1428,7 +1473,10 @@ function renderSafe(){
   const tax = 0.26375;   // Abgeltungsteuer 25 % + Soli, ohne Kirchensteuer
   const frei = X.safeFrei || 0, zSt = Math.max(0, zj - frei), zNetto = zj - zSt*tax;   // Steuer nur über dem Freibetrag
   const avg = totTg ? zj/totTg*100 : 0;     // Ø-Zins nur über die verzinsten Positionen
-  POS.forEach(o=>{ const el=$(`psum-${o.gi}-${o.pi}`); if(el) el.textContent = o.saldo&&o.zins ? `Zinsen ca. ${eur2(o.saldo*o.zins/100)} / Jahr` : ""; });
+  POS.forEach(o=>{ const el=$(`psum-${o.gi}-${o.pi}`); if(!el) return;
+    const due = ptOf(G[o.gi]).due ? dueNote(o.q.due) : "";
+    el.textContent = [o.saldo&&o.zins ? `Zinsen ca. ${eur2(o.saldo*o.zins/100)} / Jahr` : "", due].filter(Boolean).join(" · "); });
+  const soon = POS.filter(o=>ptOf(G[o.gi]).due && dueNote(o.q.due)).map(o=>`${esc(G[o.gi].name)} – ${esc(posName(o.q,o.pi))} (${deDate(o.q.due)})`);
   G.forEach((g,gi)=>{ const el=$("ssum-"+gi); if (el) el.textContent = "Summe " + eur(vals[gi]); });
 
   const pcol = o => SCOL(o.gi);
@@ -1446,6 +1494,7 @@ function renderSafe(){
   const fv = fvTg + (tot - totTg) + 12*rate;
   $("safenote").innerHTML = tot||rate ? `Zinsen pro Jahr: <strong>${eur2(zj)}</strong> brutto · <strong>${eur2(zNetto)}</strong> nach Steuer (Abgeltungsteuer + Soli, 26,375 %, ohne Kirchensteuer, ${frei ? `Freibetrag ${eur(frei)}` : "ohne Freibetrag"}).<br>
     In 12 Monaten ca. <strong>${eur(fv)}</strong> (Positionen mit Zins mit Ø-Zins verzinst, übrige ohne Kursentwicklung, plus 12 × Sparrate, vor Steuern).` : "";
+  if (soon.length) $("safenote").innerHTML += `<br>ℹ️ Bald oder bereits fällig: ${soon.join(", ")} – Betrag neu anlegen.`;
 
   // Ist-Verteilung je Baustein + Rebalancing über die Sparrate
   const zs = G.map(g=>+g.ziel||0), zSum = zs.reduce((a,b)=>a+b,0), tg = zs.map(z=>z/100);
@@ -1942,8 +1991,8 @@ $("expCsv").addEventListener("click", ()=>{
     n(+e.wert||0), cT?n((+e.wert||0)/cT*100):"", "", n(CORE.etfAlloc ? CORE.etfAlloc[i][j] : 0)])));
   // Risikoarm
   const sT = X.sg.reduce((a,g)=>a+g.pos.reduce((x,q)=>x+(+q.saldo||0),0),0);
-  X.sg.forEach((g,gi)=>g.pos.forEach((q,pi)=>rows.push([safeName(), [g.name, posName(q,pi)].filter(Boolean).join(" – "), q.wkn||"", "",
-    n(+q.saldo||0), sT?n((+q.saldo||0)/sT*100):"", q.zins?n(q.zins):"", n(SAFE_ALLOC ? SAFE_ALLOC[gi][pi] : 0)])));
+  X.sg.forEach((g,gi)=>g.pos.forEach((q,pi)=>rows.push([safeName(), [g.name, posName(q,pi)].filter(Boolean).join(" – "), q.wkn||"", ptOf(g).l,
+    n(+q.saldo||0), sT?n((+q.saldo||0)/sT*100):"", ptOf(g).zins && q.zins ? n(q.zins) : "", n(SAFE_ALLOC ? SAFE_ALLOC[gi][pi] : 0)])));
   // Spielgeld ETFs
   const eT = X.etfs.reduce((a,e)=>a+e.comd+e.scal,0);
   X.etfs.forEach((e,i)=>{
