@@ -536,7 +536,7 @@
       <div class="groups" id="xetfs"></div>
       <button class="add" data-add="etfs">+ ETF hinzufügen</button>
     </section>
-    <section class="card">
+    <section class="card" id="etfVert">
       <h2>Verteilung</h2>
       <div class="bar" id="barEtf"></div>
       <div class="scroll"><table id="xetfTable"></table></div>
@@ -1040,11 +1040,7 @@ function renderCore(){
    ========================================================= */
 const XSTORE = "depot-rechner-extra-v1";
 const X = Object.assign({
-  etfs:[
-    {name:"ETF A (WKN …)", comd:0, scal:0, rate:0},
-    {name:"ETF B (WKN …)", comd:0, scal:0, rate:0},
-    {name:"ETF C (WKN …)", comd:0, scal:0, rate:0},
-  ],
+  etfs:[],                 // neue Nutzer starten leer (früher Platzhalter ETF A/B/C)
   stocks:[
     {name:"Aktie 1 (WKN …)", wert:0, anz:0, kauf:0},
     {name:"Aktie 2 (WKN …)", wert:0, anz:0, kauf:0},
@@ -1198,7 +1194,7 @@ function buildEtfs(){
     ${X.etfDepots.map((d,di)=>nf("etfs",i,"w:"+d.id, one ? `Wert (€) · ${esc(depName(d,di))}` : esc(depName(d,di)), (e.w||{})[d.id])).join("")}
     ${nf("etfs",i,"rate","Sparrate (€/Monat)",e.rate)}
     <div class="sum" id="xsum${i}"></div></div>`).join("")
-    : `<p class="empty">Noch keine ETFs erfasst.</p>`;
+    : `<p class="empty">Noch keine ETFs erfasst – unten mit „+ ETF hinzufügen“ anlegen.</p>`;
 }
 /* Karte „Depots“ Reiter 4: Depots anlegen, umbenennen, entfernen */
 const MAXDEP = 5;
@@ -1491,6 +1487,7 @@ function renderExtra(){
   X.avRate = Math.max(0, Math.round(num("avRate")));
   X.safeFrei = Math.max(0, num("spFrei"));
   $("resetEtfs").parentNode.style.display = X.etfs.length ? "" : "none";
+  $("etfVert").style.display = X.etfs.length ? "" : "none";             // ohne ETFs keine leere Verteilung
   $("resetStocks").parentNode.style.display = X.stocks.length ? "" : "none";
   X.safeTab = {t1:$("safeT1").value, t2:$("safeT2").value}; renderSafeName(); renderSafeZiel();
   X.etfTab = {t1:$("etfT1").value, t2:$("etfT2").value}; renderEtfName();
