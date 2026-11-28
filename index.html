@@ -179,6 +179,11 @@
   .zv-prod select,.zv-prod input{margin:0;width:100%}
   .zv-foot{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:12px}
   .zv-foot p{margin:0}
+  .zv-list.dp{grid-template-columns:auto 1fr 32px}
+  .zv-list.dp .dot{margin:0}
+  .dp-view{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
+  .dp-chip{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border:1px solid var(--line);border-radius:999px;font-size:14px}
+  .dp-chip .dot{margin:0}
   #tab-safe.setup > section:not(#safeSetup), #tab-safe.setup > #safeNote, #tab-safe.setup > .tabhead{display:none !important}
   .stbox{display:block;border:1px solid;border-radius:8px;padding:10px 12px;color:var(--text);font-weight:400}
   .stbox.ok{background:var(--okbg);border-color:var(--okline)}
@@ -504,9 +509,19 @@
   <!-- ============ SPIELGELD ETFs ============ -->
   <section class="tab" id="tab-etfs" data-title="Spielgeld ETFs">
     <div class="pdf-title">Spielgeld ETFs</div>
-    <p class="note" style="margin:0 0 14px">Nur erfassen und Verteilung ansehen – kein Rebalancing. Name und WKN mit ✓ oder Enter bestätigen, mit ✎ wieder bearbeiten.</p>
+    <p class="note" style="margin:0 0 14px">Nur erfassen und Verteilung ansehen – kein Rebalancing. Depots und ETFs mit ✎ bearbeiten, mit ✓ oder Enter bestätigen.</p>
+    <section class="card zv-card" id="etfDep">
+      <div class="zv-head"><h2>Depots</h2>
+        <button class="ico" id="etfDepEdit" title="Depots bearbeiten" aria-label="Depots bearbeiten">✎</button></div>
+      <div class="zv-view"><div class="dp-view" id="etfDepView"></div><p class="note" id="etfDepTxt"></p></div>
+      <div class="zv-edit">
+        <div class="zv-list dp" id="etfDepList"></div>
+        <div class="zv-foot"><p class="note" id="etfDepHint"></p>
+          <button class="ico okb" id="etfDepOk" title="Bestätigen (Enter)" aria-label="Bestätigen">✓</button></div>
+      </div>
+    </section>
     <section class="card">
-      <h2>Bestände je Broker (€)</h2>
+      <h2>Bestände (€)</h2>
       <div class="groups" id="xetfs"></div>
       <button class="add" data-add="etfs">+ ETF hinzufügen</button>
     </section>
@@ -1056,6 +1071,18 @@ if (X.tax === undefined) X.tax = 26.375;
 // Reitername Übersicht: bestehende Daten (Ziel schon gespeichert) behalten den alten Namen
 if (!X.avTab || typeof X.avTab !== "object")
   X.avTab = X.mixZiel !== undefined ? {t1:"Übersicht", t2:"Altersvorsorge"} : {t1:"Übersicht", t2:"Sparpläne"};
+// Reiter 4: frei festlegbare Depots statt fester Spalten comdirect/Scalable
+const depId = () => "d" + Date.now().toString(36) + Math.random().toString(36).slice(2,6);
+if (!Array.isArray(X.etfDepots)){
+  const legacy = Array.isArray(load(XSTORE).etfs) && X.etfs.some(e=>e.comd !== undefined || e.scal !== undefined);   // nur gespeicherte Daten
+  X.etfDepots = legacy ? [{id:"dA", name:"comdirect"}, {id:"dB", name:"Scalable"}] : [{id:depId(), name:"Depot"}];
+}
+X.etfs.forEach(e=>{
+  if (!e.w || typeof e.w !== "object") e.w = {};
+  if (e.comd !== undefined){ if (+e.comd) e.w.dA = +e.comd; delete e.comd; }
+  if (e.scal !== undefined){ if (+e.scal) e.w.dB = +e.scal; delete e.scal; }
+  e.rate = +e.rate || 0;
+});
 [...X.etfs, ...X.stocks].forEach(e=>{ if (e.wkn===undefined){ e.wkn=""; e.name=(e.name||"").replace(/\s*\(WKN …\)\s*$/,""); } e.locked=!!e.locked; });
 const safeName  = () => [X.safeTab.t1, X.safeTab.t2].map(x=>(x||"").trim()).filter(Boolean).join(" – ") || "Sicherheitsbaustein";
 const safeShort = () => (X.safeTab.t2||"").trim() || (X.safeTab.t1||"").trim() || "Sicherheitsbaustein";
@@ -1129,15 +1156,55 @@ function headItem(k,i,e){
          <button class="del" data-del="${k}" data-i="${i}" title="${w} entfernen" aria-label="${w} entfernen">×</button>`}
     </div></div>`;
 }
+const eSum = e => X.etfDepots.reduce((a,d)=>a+(+(e.w||{})[d.id]||0),0);
+const depName = (d,i) => (d.name||"").trim() || `Depot ${i+1}`;
 function buildEtfs(){
+  const one = X.etfDepots.length === 1;
   $("xetfs").innerHTML = X.etfs.length ? X.etfs.map((e,i)=>`<div class="group">
     ${headItem("etfs",i,e)}
-    ${nf("etfs",i,"comd","comdirect · Altbestand",e.comd)}
-    ${nf("etfs",i,"scal","Scalable",e.scal)}
-    ${nf("etfs",i,"rate","Sparrate Scalable (€/Monat)",e.rate)}
+    ${X.etfDepots.map((d,di)=>nf("etfs",i,"w:"+d.id, one ? `Wert (€) · ${esc(depName(d,di))}` : esc(depName(d,di)), (e.w||{})[d.id])).join("")}
+    ${nf("etfs",i,"rate","Sparrate (€/Monat)",e.rate)}
     <div class="sum" id="xsum${i}"></div></div>`).join("")
     : `<p class="empty">Noch keine ETFs erfasst.</p>`;
 }
+/* Karte „Depots“ Reiter 4: Depots anlegen, umbenennen, entfernen */
+const MAXDEP = 5;
+function buildEtfDep(){
+  $("etfDepList").innerHTML = X.etfDepots.map((d,di)=>`<span class="dot" style="background:${col(di+4)}"></span>
+    <input type="text" class="name" id="edn-${di}" data-edn="${di}" value="${esc(d.name)}" placeholder="Name, z. B. Bank oder Broker" aria-label="Name Depot ${di+1}">
+    ${X.etfDepots.length>1 ? `<button class="del" data-eddel="${di}" title="Depot entfernen" aria-label="Depot entfernen">×</button>` : "<span></span>"}`).join("") +
+    `<button class="add small" id="edAdd" style="grid-column:1/-1">+ Depot hinzufügen</button>`;
+  const b = $("edAdd"); b.disabled = X.etfDepots.length>=MAXDEP; if (b.disabled) b.textContent = `Maximal ${MAXDEP} Depots`;
+}
+function renderEtfDep(){
+  $("etfDepView").innerHTML = X.etfDepots.map((d,di)=>`<span class="dp-chip"><span class="dot" style="background:${col(di+4)}"></span>${esc(depName(d,di))}</span>`).join("");
+  $("etfDepTxt").textContent = X.etfDepots.length === 1 ? "Für jeden ETF wird ein Wert erfasst. Weitere Depots mit ✎ hinzufügen." : "Für jeden ETF wird der Wert je Depot erfasst.";
+  const miss = X.etfDepots.some(d=>!(d.name||"").trim());
+  $("etfDepHint").innerHTML = miss ? `<span class="warn">Bitte jedem Depot einen Namen geben.</span>` : "";
+}
+function etfDepEdit(on){
+  const noName = () => X.etfDepots.findIndex(d=>!(d.name||"").trim());
+  if (on){ buildEtfDep(); renderEtfDep(); $("etfDep").classList.add("editing"); $("edn-0")?.focus(); return; }
+  if (noName() >= 0){ renderEtfDep(); $("edn-"+noName())?.focus(); return; }
+  X.etfDepots.forEach(d=>d.name = d.name.trim());
+  $("etfDep").classList.remove("editing"); renderEtfDep(); buildEtfs(); touch(); renderAll();
+}
+document.addEventListener("click", ev=>{
+  if (ev.target.closest("#etfDepEdit")) etfDepEdit(true);
+  else if (ev.target.closest("#etfDepOk")) etfDepEdit(false);
+  else if (ev.target.closest("#edAdd")){
+    if (X.etfDepots.length >= MAXDEP) return;
+    X.etfDepots.push({id:depId(), name:""}); buildEtfDep(); renderEtfDep(); $("edn-"+(X.etfDepots.length-1))?.focus();
+  } else { const del = ev.target.closest("[data-eddel]"); if (!del) return;
+    const di = +del.dataset.eddel, d = X.etfDepots[di];
+    const sum = X.etfs.reduce((a,e)=>a+(+(e.w||{})[d.id]||0),0);
+    if (sum && !confirm(`Depot „${depName(d,di)}“ entfernen? Die Werte dort (${eur(sum)}) werden gelöscht.`)) return;
+    X.etfs.forEach(e=>{ if (e.w) delete e.w[d.id]; });
+    X.etfDepots.splice(di,1); buildEtfDep(); renderEtfDep(); buildEtfs(); touch(); renderAll(); }
+});
+document.addEventListener("input", ev=>{ const t = ev.target; if (t.dataset.edn === undefined) return;
+  X.etfDepots[+t.dataset.edn].name = t.value; renderEtfDep(); save(XSTORE, X); });
+document.addEventListener("keydown", ev=>{ if (ev.key==="Enter" && ev.target.dataset.edn !== undefined){ ev.preventDefault(); etfDepEdit(false); } });
 function buildStocks(){
   $("stocks").innerHTML = X.stocks.length ? X.stocks.map((s,i)=>`<div class="group">
     ${headItem("stocks",i,s)}
@@ -1355,7 +1422,7 @@ X.sg.forEach(g=>g.pos.forEach(q=>{ if (q.art==="anl") q.zins = 0; delete q.art; 
     });
   });
 }
-buildEtfs(); buildStocks(); buildSafe();
+buildEtfs(); renderEtfDep(); buildStocks(); buildSafe();
 // Übersicht: früher Ziel + „darf tendieren bis“ → jetzt Ziel ± Toleranzband (Mitte und halbe Breite des alten Korridors)
 if (X.mixBand === undefined){
   if (X.mixZiel !== undefined && X.mixZiel !== null && X.mixZiel !== ""){
@@ -1397,15 +1464,16 @@ function renderExtra(){
   save(XSTORE, X);
 
   // Spielgeld ETFs
-  const tot = X.etfs.reduce((a,e)=>a+e.comd+e.scal,0);
-  const tc = X.etfs.reduce((a,e)=>a+e.comd,0), ts = X.etfs.reduce((a,e)=>a+e.scal,0), tr = X.etfs.reduce((a,e)=>a+e.rate,0);
-  X.etfs.forEach((e,i)=>{ const el=$("xsum"+i); if(el) el.textContent="Summe "+eur(e.comd+e.scal); });
-  bar("barEtf", X.etfs.map((e,i)=>({l:etfName(e,i), v:e.comd+e.scal, c:col(i)})));
-  $("xetfTable").innerHTML = `<thead><tr><th>ETF</th><th>comdirect</th><th>Scalable</th><th>Summe</th><th>Anteil</th><th>Sparrate</th><th>Anteil Sparrate</th></tr></thead><tbody>` +
-    X.etfs.map((e,i)=>{ const s=e.comd+e.scal; return `<tr><td><span class="dot" style="background:${col(i)}"></span>${etfLabel(e,i)}</td>
-      <td>${eur(e.comd)}</td><td>${eur(e.scal)}</td><td>${eur(s)}</td><td><strong>${tot?pct(s/tot*100,1):"–"}</strong></td>
+  const DEP = X.etfDepots, multi = DEP.length > 1;
+  const dv = (e,d) => +(e.w||{})[d.id] || 0;
+  const tot = X.etfs.reduce((a,e)=>a+eSum(e),0), tr = X.etfs.reduce((a,e)=>a+e.rate,0);
+  X.etfs.forEach((e,i)=>{ const el=$("xsum"+i); if(el) el.textContent = multi ? "Summe "+eur(eSum(e)) : ""; });
+  bar("barEtf", X.etfs.map((e,i)=>({l:etfName(e,i), v:eSum(e), c:col(i)})));
+  $("xetfTable").innerHTML = `<thead><tr><th>ETF</th>${multi ? DEP.map((d,di)=>`<th>${esc(depName(d,di))}</th>`).join("") : ""}<th>${multi?"Summe":"Wert"}</th><th>Anteil</th><th>Sparrate</th><th>Anteil Sparrate</th></tr></thead><tbody>` +
+    X.etfs.map((e,i)=>{ const s=eSum(e); return `<tr><td><span class="dot" style="background:${col(i)}"></span>${etfLabel(e,i)}</td>
+      ${multi ? DEP.map(d=>`<td>${eur(dv(e,d))}</td>`).join("") : ""}<td>${eur(s)}</td><td><strong>${tot?pct(s/tot*100,1):"–"}</strong></td>
       <td>${eur(e.rate)}</td><td>${tr?pct(e.rate/tr*100,1):"–"}</td></tr>`; }).join("") +
-    `</tbody><tfoot><tr><td>Gesamt</td><td>${eur(tc)}</td><td>${eur(ts)}</td><td>${eur(tot)}</td><td>${tot?pct(100,1):"–"}</td><td>${eur(tr)}</td><td>${tr?pct(100,1):"–"}</td></tr></tfoot>`;
+    `</tbody><tfoot><tr><td>Gesamt</td>${multi ? DEP.map(d=>`<td>${eur(X.etfs.reduce((a,e)=>a+dv(e,d),0))}</td>`).join("") : ""}<td>${eur(tot)}</td><td>${tot?pct(100,1):"–"}</td><td>${eur(tr)}</td><td>${tr?pct(100,1):"–"}</td></tr></tfoot>`;
 
   // Spielgeld Aktien
   X.stocks.forEach(s=>{ s.anz=s.anz||0; s.kauf=s.kauf||0; s.einstand = s.anz>0 && s.kauf>0 ? s.anz*s.kauf : 0; });
@@ -1421,7 +1489,7 @@ function renderExtra(){
       <td>${eur(s.wert)}</td><td>${sw?pct(s.wert/sw*100,1):"–"}</td><td>${s.einstand?eur(s.einstand):"–"}</td><td>${gv(s)}</td></tr>`).join("") +
     `</tbody><tfoot><tr><td>Gesamt</td><td></td><td></td><td></td><td>${eur(sw)}</td><td>${sw?pct(100,1):"–"}</td><td>${allE?eur(se):"–"}</td><td>${allE?gv({wert:sw,einstand:se}):"–"}</td></tr></tfoot>`;
 
-  return {etfTotal:tot, comd:tc, scal:ts, etfRate:tr, stockTotal:sw};
+  return {etfTotal:tot, etfRate:tr, stockTotal:sw};
 }
 
 /* =========================================================
@@ -1837,6 +1905,7 @@ document.addEventListener("input", e=>{
     else if (f==="spar"){ item.spar = t.checked; t.closest(".cetf")?.classList.toggle("sp", item.spar); }
     else if (f==="art"){ item.art = t.value; if (item.art==="anl") item.wkn = (item.wkn||"").toUpperCase().trim(); buildSafe(); }
     else if (f==="wkn") item.wkn = subLabel(k,item)==="WKN" ? t.value.toUpperCase().trim() : t.value;
+    else if (f.startsWith("w:")){ const v = parseFloat(t.value); item.w = item.w || {}; item.w[f.slice(2)] = isFinite(v) && v>0 ? v : 0; }
     else { const v = parseFloat(t.value); item[f] = isFinite(v) && v>0 ? v : 0; }
   }
   renderAll();
@@ -1862,7 +1931,7 @@ document.addEventListener("click", e=>{
   if (add){
     const k = add.dataset.add;
     const NEW = {
-      etfs:  {name:"", wkn:"", comd:0, scal:0, rate:0, locked:false},
+      etfs:  {name:"", wkn:"", w:{}, rate:0, locked:false},
       stocks:{name:"", wkn:"", wert:0, anz:0, kauf:0, locked:false},
     };
     X[k].push(NEW[k]);
@@ -1951,7 +2020,7 @@ $("resetCore").addEventListener("click", ()=>{
 const TAB_RESET = {
   safe:   {name:()=>safeName(), what:n=>`Alle Bausteine, Positionen, Werte, die Sparrate, der Freibetrag und der Name werden gelöscht – danach startet „${n}“ wieder mit der Vorlagenauswahl.`,
            run:()=>{ X.sg = []; X.safePlan = {gesamt:0, min:0, band:5, fine:false}; X.safeTab = {t1:"Sparplan", t2:"Sicherheitsbaustein"}; X.safeFrei = 0; }},
-  etfs:   {name:()=>"Spielgeld ETFs",   what:()=>"Alle ETFs und ihre Werte werden gelöscht. Der Grenzwert für den Hinweis bleibt erhalten.", run:()=>{ X.etfs = []; }},
+  etfs:   {name:()=>"Spielgeld ETFs",   what:()=>"Alle ETFs und ihre Werte werden gelöscht. Die Depots und der Grenzwert für den Hinweis bleiben erhalten.", run:()=>{ X.etfs = []; }},
   stocks: {name:()=>"Spielgeld Aktien", what:()=>"Alle Aktien und ihre Werte werden gelöscht. Der Grenzwert für den Hinweis bleibt erhalten.", run:()=>{ X.stocks = []; }},
 };
 document.addEventListener("click", ev=>{
@@ -1994,10 +2063,10 @@ $("expCsv").addEventListener("click", ()=>{
   X.sg.forEach((g,gi)=>g.pos.forEach((q,pi)=>rows.push([safeName(), [g.name, posName(q,pi)].filter(Boolean).join(" – "), q.wkn||"", ptOf(g).l,
     n(+q.saldo||0), sT?n((+q.saldo||0)/sT*100):"", ptOf(g).zins && q.zins ? n(q.zins) : "", n(SAFE_ALLOC ? SAFE_ALLOC[gi][pi] : 0)])));
   // Spielgeld ETFs
-  const eT = X.etfs.reduce((a,e)=>a+e.comd+e.scal,0);
-  X.etfs.forEach((e,i)=>{
-    rows.push(["Spielgeld ETFs", etfName(e,i), e.wkn||"", "comdirect", n(e.comd), eT?n(e.comd/eT*100):"", "", ""]);
-    rows.push(["Spielgeld ETFs", etfName(e,i), e.wkn||"", "Scalable",  n(e.scal), eT?n(e.scal/eT*100):"", "", n(e.rate)]);
+  const eT = X.etfs.reduce((a,e)=>a+eSum(e),0);
+  X.etfs.forEach((e,i)=>{     // eine Zeile je Depot mit Wert; Sparrate in der ersten Zeile
+    const ds = X.etfDepots.map((d,di)=>[depName(d,di), +(e.w||{})[d.id]||0]).filter(([,v])=>v>0);
+    (ds.length ? ds : [["",0]]).forEach(([dn,v],j)=>rows.push(["Spielgeld ETFs", etfName(e,i), e.wkn||"", dn && `Depot ${dn}`, n(v), eT?n(v/eT*100):"", "", j ? "" : n(e.rate)]));
   });
   // Spielgeld Aktien
   const aT = X.stocks.reduce((a,s)=>a+(s.wert||0),0);
