@@ -35,7 +35,7 @@ Sprache der App und der Kommunikation: **Deutsch**.
 1. **Risikoreich** (`#tab-vorsorge`, Speicherschlüssel `depot-rechner-v1`) – Name frei wählbar – *generisch überarbeitet, fertig*
 2. **Risikoarm** (`#tab-safe`) – Konten und ETFs/Fonds – Name frei wählbar – *generisch überarbeitet, fertig*
 3. **Übersicht Altersvorsorge** (`#tab-av`) – Verhältnis Reiter 1 / Reiter 2, optionales Rebalancing der Gesamtrate – Name frei wählbar – *generisch überarbeitet, fertig*
-4. **Spielgeld ETFs** (`#tab-etfs`) – nur Erfassung, Broker-Spalten, Obergrenze
+4. **Spielgeld ETFs** (`#tab-etfs`) – nur Erfassung, Depots frei festlegbar, Obergrenze – Name frei wählbar – *generisch überarbeitet, fertig*
 5. **Spielgeld Aktien** (`#tab-spiel`) – nur Erfassung, Einstand, Obergrenze
 6. **Übersicht Gesamt** (`#tab-gesamt`)
 
@@ -156,6 +156,19 @@ Reiter 2–6 speichern unter `depot-rechner-extra-v1` (Objekt `X`).
 - **D (fertig):** Noch keine Werte und Sparraten in Reiter 1/2 → Klasse `#tab-av.leer` blendet Kennzahlen,
   Ist-Verteilung und Sparrate-Aufteilung (`.av-hide`) aus; Fazit zeigt ℹ️-Hinweis mit Links zu Reiter 1/2.
 
+## Stand Reiter 4 „Spielgeld ETFs“ (abgeschlossen)
+- Nur Erfassung, kein Rebalancing. ETFs `X.etfs` mit Name, WKN (✎/✓), Wert je Depot `e.w` (`{depotId: €}`) und
+  **einer** Sparrate je ETF `e.rate` (nicht je Depot). Summe je ETF `eSum(e)`.
+- **Depots** `X.etfDepots` (`[{id, name}]`, max. 5) in der Karte „Depots“ (`#etfDep`, ✎/✓ wie Zielverteilung,
+  `buildEtfDep()`/`renderEtfDep()`): anlegen, umbenennen, entfernen (mit Rückfrage, wenn dort Werte stehen – die
+  werden gelöscht); jedes Depot braucht einen Namen. Bei nur einem Depot keine Depot-Spalten, nur „Wert“.
+- Migration: alte Felder `comd`/`scal` → Depots „comdirect“ (`dA`) und „Scalable“ (`dB`), nur bei gespeicherten Daten.
+  Neue Nutzer: ein Depot „Depot“, keine ETFs (keine Platzhalter mehr); Karte „Verteilung“ (`#etfVert`) erst mit ETFs.
+- Reitername `X.etfTab` (t1/t2, Start „Spielgeld / ETFs“) über ✎ (`eTabName()`/`eTabShort()`/`renderEtfName()`);
+  wirkt auf Reiterleiste, PDF, Zurücksetzen-Link, Grenzwert-Hinweis, CSV und Reiter 6 (Topf, Sparplan).
+- CSV: eine Zeile je ETF und Depot mit Wert (Spalte „Art“ = „Depot …“), Sparrate in der ersten Zeile des ETFs.
+- Zahlenformat: `z0()` setzt Werte, die beim Anzeigen auf 0 gerundet würden, auf 0 (kein „-0 €“ / „-0,00“ / „+0 €“).
+
 ## Nächster Schritt
-Reiter 4 „Spielgeld ETFs“ analysieren (feste Broker-Spalten comdirect/Scalable,
-„Spielgeld ETFs (Scalable)“ in Reiter 6). Offen (klein): „-0,00“ / „-0 €“ bei exakt 0 Abweichung.
+Reiter 5 „Spielgeld Aktien“ analysieren (fester Name „Spielgeld Aktien“, Platzhalter „Aktie 1/2“ für neue Nutzer,
+fester Name auch in Reiter 6, CSV und Grenzwert-Hinweis).
