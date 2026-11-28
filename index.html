@@ -266,7 +266,7 @@
     <button data-tab="vorsorge" class="active" id="navCore"><span class="t1">Altersvorsorge</span>Risikoreich</button>
     <button data-tab="safe" id="navSafe"><span class="t1">Altersvorsorge</span>Risikoarm</button>
     <button data-tab="av" id="navAv"><span class="t1">Übersicht</span>Altersvorsorge</button>
-    <button data-tab="etfs"><span class="t1">Spielgeld</span>ETFs</button>
+    <button data-tab="etfs" id="navEtfs"><span class="t1">Spielgeld</span>ETFs</button>
     <button data-tab="spiel"><span class="t1">Spielgeld</span>Aktien</button>
     <button data-tab="gesamt"><span class="t1">Übersicht</span>Gesamt</button>
   </nav>
@@ -508,7 +508,18 @@
 
   <!-- ============ SPIELGELD ETFs ============ -->
   <section class="tab" id="tab-etfs" data-title="Spielgeld ETFs">
-    <div class="pdf-title">Spielgeld ETFs</div>
+    <div class="pdf-title" id="pdfEtfs">Spielgeld – ETFs</div>
+    <div class="tabhead" id="etfHead">
+      <div class="th-view"><div><span class="th1" id="eth1"></span><span class="th2" id="eth2"></span></div>
+        <button class="ico" id="ethEdit" title="Reiter umbenennen" aria-label="Reiter umbenennen">✎</button></div>
+      <div class="th-edit">
+        <div class="efields">
+          <label class="inl">Oberzeile<input type="text" id="etfT1" maxlength="24" placeholder="z. B. Spielgeld"></label>
+          <label class="inl">Name<input type="text" id="etfT2" maxlength="24" placeholder="z. B. ETFs"></label>
+        </div>
+        <div class="eact"><button class="ico okb" id="ethOk" title="Bestätigen (Enter)" aria-label="Bestätigen">✓</button></div>
+      </div>
+    </div>
     <p class="note" style="margin:0 0 14px">Nur erfassen und Verteilung ansehen – kein Rebalancing. Depots und ETFs mit ✎ bearbeiten, mit ✓ oder Enter bestätigen.</p>
     <section class="card zv-card" id="etfDep">
       <div class="zv-head"><h2>Depots</h2>
@@ -530,7 +541,7 @@
       <div class="bar" id="barEtf"></div>
       <div class="scroll"><table id="xetfTable"></table></div>
       <div class="row" style="margin-top:14px">
-        <div><label for="capEtf">Hinweis, wenn Spielgeld ETFs über … % vom Gesamtvermögen</label><input type="number" inputmode="decimal" id="capEtf" min="0" step="0.5" value="10"></div>
+        <div><label for="capEtf" id="lblCapEtf">Hinweis, wenn Spielgeld ETFs über … % vom Gesamtvermögen</label><input type="number" inputmode="decimal" id="capEtf" min="0" step="0.5" value="10"></div>
       </div>
       <p class="note" id="capnoteEtf"></p>
     </section>
@@ -1093,6 +1104,28 @@ function renderSafeName(){
   $("tab-safe").dataset.title = safeName(); if (!document.body.classList.contains("pdf-mode")) $("pdfSafe").textContent = safeName();
 }
 $("safeT1").value = X.safeTab.t1 || ""; $("safeT2").value = X.safeTab.t2 || "";
+// Reitername Reiter 4 (frei wählbar)
+if (!X.etfTab || typeof X.etfTab !== "object") X.etfTab = {t1:"Spielgeld", t2:"ETFs"};
+const eTabName  = () => [X.etfTab.t1, X.etfTab.t2].map(x=>(x||"").trim()).filter(Boolean).join(" – ") || "ETFs";
+const eTabShort = () => (X.etfTab.t2||"").trim() || (X.etfTab.t1||"").trim() || "ETFs";
+function renderEtfName(){
+  $("eth1").textContent = (X.etfTab.t1||"").trim(); $("eth2").textContent = eTabShort();
+  $("navEtfs").innerHTML = `<span class="t1">${esc((X.etfTab.t1||"").trim()) || "&nbsp;"}</span>${esc(eTabShort())}`;
+  $("resetEtfs").textContent = `„${eTabName()}“ zurücksetzen …`;
+  $("lblCapEtf").textContent = `Hinweis, wenn „${eTabName()}“ über … % vom Gesamtvermögen`;
+  $("tab-etfs").dataset.title = eTabName(); if (!document.body.classList.contains("pdf-mode")) $("pdfEtfs").textContent = eTabName();
+}
+$("etfT1").value = X.etfTab.t1 || ""; $("etfT2").value = X.etfTab.t2 || "";
+function etfHeadEdit(on){
+  if (!on && !$("etfT2").value.trim() && !$("etfT1").value.trim()){ $("etfT2").focus(); return; }
+  $("etfHead").classList.toggle("editing", on);
+  if (on) $("etfT2").focus(); else { touch(); renderAll(); }
+}
+document.addEventListener("click", ev=>{
+  if (ev.target.closest("#ethEdit")) etfHeadEdit(true);
+  else if (ev.target.closest("#ethOk")) etfHeadEdit(false);
+});
+document.addEventListener("keydown", ev=>{ if (ev.key==="Enter" && (ev.target.id==="etfT1"||ev.target.id==="etfT2")){ ev.preventDefault(); etfHeadEdit(false); } });
 const avName  = () => [X.avTab.t1, X.avTab.t2].map(x=>(x||"").trim()).filter(Boolean).join(" – ") || "Übersicht";
 const avShort = () => (X.avTab.t2||"").trim() || (X.avTab.t1||"").trim() || "Übersicht";
 const avLink  = () => `<a href="#" class="goto" data-goto="av">→ ${esc(avName())}</a>`;
@@ -1460,6 +1493,7 @@ function renderExtra(){
   $("resetEtfs").parentNode.style.display = X.etfs.length ? "" : "none";
   $("resetStocks").parentNode.style.display = X.stocks.length ? "" : "none";
   X.safeTab = {t1:$("safeT1").value, t2:$("safeT2").value}; renderSafeName(); renderSafeZiel();
+  X.etfTab = {t1:$("etfT1").value, t2:$("etfT2").value}; renderEtfName();
   X.avTab = {t1:$("avT1").value, t2:$("avT2").value}; renderAvName();
   save(XSTORE, X);
 
@@ -1827,7 +1861,7 @@ function renderAll(){
   const topf = [
     {l:esc(coreName()), v:CORE.total,    c:"var(--c1)"},
     {l:esc(safeName()),   v:sf.total,      c:"var(--c5)"},
-    {l:"Spielgeld ETFs",     v:ex.etfTotal,   c:"var(--c2)"},
+    {l:esc(eTabName()),     v:ex.etfTotal,   c:"var(--c2)"},
     {l:"Spielgeld Aktien",   v:ex.stockTotal, c:"var(--c3)"},
   ];
   bar("barTopf", topf); shareTable("topfTable","Topf",topf);
@@ -1836,7 +1870,7 @@ function renderAll(){
   $("rateTable").innerHTML = `<thead><tr><th>Sparplan</th><th>€ / Monat</th><th>€ / Jahr</th></tr></thead><tbody>
     <tr><td>${esc(coreName())}</td><td>${eur(CORE.rate)}</td><td>${eur(CORE.rate*12)}</td></tr>
     <tr><td>${esc(safeName())}</td><td>${eur(sf.rate)}</td><td>${eur(sf.rate*12)}</td></tr>
-    <tr><td>Spielgeld ETFs (Scalable)</td><td>${eur(ex.etfRate)}</td><td>${eur(ex.etfRate*12)}</td></tr>
+    <tr><td>${esc(eTabName())}</td><td>${eur(ex.etfRate)}</td><td>${eur(ex.etfRate*12)}</td></tr>
     </tbody><tfoot><tr><td>Gesamt</td><td>${eur(rateTotal)}</td><td>${eur(rateTotal*12)}</td></tr></tfoot>`;
 
   const capNote = (label, value, cap) => {
@@ -1861,7 +1895,7 @@ function renderAll(){
     card.classList.toggle("st-warn", t.startsWith("⚠"));
     card.classList.toggle("st-info", t.startsWith("ℹ"));
   });
-  $("capnoteEtf").innerHTML = capNote("Spielgeld ETFs", ex.etfTotal, X.capEtf);
+  $("capnoteEtf").innerHTML = capNote(esc(eTabName()), ex.etfTotal, X.capEtf);
 }
 
 /* ---------- Ereignisse ---------- */
@@ -2020,7 +2054,7 @@ $("resetCore").addEventListener("click", ()=>{
 const TAB_RESET = {
   safe:   {name:()=>safeName(), what:n=>`Alle Bausteine, Positionen, Werte, die Sparrate, der Freibetrag und der Name werden gelöscht – danach startet „${n}“ wieder mit der Vorlagenauswahl.`,
            run:()=>{ X.sg = []; X.safePlan = {gesamt:0, min:0, band:5, fine:false}; X.safeTab = {t1:"Sparplan", t2:"Sicherheitsbaustein"}; X.safeFrei = 0; }},
-  etfs:   {name:()=>"Spielgeld ETFs",   what:()=>"Alle ETFs und ihre Werte werden gelöscht. Die Depots und der Grenzwert für den Hinweis bleiben erhalten.", run:()=>{ X.etfs = []; }},
+  etfs:   {name:()=>eTabName(),   what:()=>"Alle ETFs und ihre Werte werden gelöscht. Die Depots und der Grenzwert für den Hinweis bleiben erhalten.", run:()=>{ X.etfs = []; }},
   stocks: {name:()=>"Spielgeld Aktien", what:()=>"Alle Aktien und ihre Werte werden gelöscht. Der Grenzwert für den Hinweis bleibt erhalten.", run:()=>{ X.stocks = []; }},
 };
 document.addEventListener("click", ev=>{
@@ -2066,7 +2100,7 @@ $("expCsv").addEventListener("click", ()=>{
   const eT = X.etfs.reduce((a,e)=>a+eSum(e),0);
   X.etfs.forEach((e,i)=>{     // eine Zeile je Depot mit Wert; Sparrate in der ersten Zeile
     const ds = X.etfDepots.map((d,di)=>[depName(d,di), +(e.w||{})[d.id]||0]).filter(([,v])=>v>0);
-    (ds.length ? ds : [["",0]]).forEach(([dn,v],j)=>rows.push(["Spielgeld ETFs", etfName(e,i), e.wkn||"", dn && `Depot ${dn}`, n(v), eT?n(v/eT*100):"", "", j ? "" : n(e.rate)]));
+    (ds.length ? ds : [["",0]]).forEach(([dn,v],j)=>rows.push([eTabName(), etfName(e,i), e.wkn||"", dn && `Depot ${dn}`, n(v), eT?n(v/eT*100):"", "", j ? "" : n(e.rate)]));
   });
   // Spielgeld Aktien
   const aT = X.stocks.reduce((a,s)=>a+(s.wert||0),0);
@@ -2074,7 +2108,7 @@ $("expCsv").addEventListener("click", ()=>{
   // Zusammenfassung
   rows.push([]); rows.push(["Zusammenfassung","Topf","","","Wert (€)","Anteil Gesamtvermögen (%)","","Sparrate (€/Monat)"]);
   const tops = [[coreName(), cT, CORE.rate], [safeName(), sT, X.safePlan.gesamt||0],
-                ["Spielgeld ETFs", eT, X.etfs.reduce((a,e)=>a+e.rate,0)], ["Spielgeld Aktien", aT, 0]];
+                [eTabName(), eT, X.etfs.reduce((a,e)=>a+e.rate,0)], ["Spielgeld Aktien", aT, 0]];
   const G = tops.reduce((a,t)=>a+t[1],0);
   tops.forEach(t=>rows.push(["Zusammenfassung", t[0], "", "", n(t[1]), G?n(t[1]/G*100):"", "", n(t[2])]));
   rows.push(["Zusammenfassung", "Gesamt", "", "", n(G), G?"100":"", "", n(tops.reduce((a,t)=>a+t[2],0))]);
