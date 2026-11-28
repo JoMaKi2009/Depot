@@ -78,20 +78,31 @@ Reiter 2–6 speichern unter `depot-rechner-extra-v1` (Objekt `X`).
   neue Nutzer: „Sparplan / Sicherheitsbaustein“.
 - **Bausteine** `X.sg` (max. 8) mit Name und Ziel %, Bearbeiten-Muster ✎/✓ wie Reiter 1.
   Kein festgelegtes Ziel (`zielRef`) – vorerst bewusst weggelassen.
-- **Positionen** `pos` je Baustein: Name, Anbieter / WKN, Wert, Zins (leer = kein Zins), „wird bespart“.
-  **Keine „Art“** (Konto/ETF) mehr; verzinst wird jede Position mit Zins > 0 (Ø-Zins, Steuer, 12-Monats-Vorschau).
+- **Produkt je Baustein** (`g.typ`, Tabelle `PT`): `tg` Tagesgeld / Konto, `fg` Festgeld, `aetf` Anleihen-ETFs,
+  `anl` Anleihen, `sonst` Sonstiges. Auswahl in der Zielverteilung statt Freitext; jedes Produkt nur einmal
+  (außer Sonstiges, dann mit eigenem Namen). Name des Bausteins = Produktname (bei Sonstiges frei).
+- **Positionen** `pos` je Baustein, Felder je Produkt:
+  Tagesgeld: Bank · Kontostand · Zins | Festgeld: Bank · Betrag · Zins · Fällig am (`due`) |
+  Anleihen-ETFs: Name · WKN · Wert (kein Zins) | Anleihen: Name · WKN · Wert · Kupon · Fällig am |
+  Sonstiges: Name · Anbieter / WKN · Wert · Zins (optional). Dazu jeweils „wird bespart“.
+  Bei Tagesgeld/Festgeld steht die Bank in `name`. Verzinst wird jede Position mit Zins > 0, sofern das Produkt
+  einen Zins hat (Ø-Zins, Steuer, 12-Monats-Vorschau). Fälligkeit ≤ 90 Tage oder vorbei: ℹ️-Hinweis bei der
+  Position und gesammelt unter der Zinsberechnung.
+- „Wird bespart“ bei Festgeld und Anleihen standardmäßig **aus** (Einmalanlage) → Baustein wird pausiert.
 - Rebalancing je Baustein (`gRebal`/`gStd`/`gMonths`, n-stellig), Toleranzband, Feinausgleich,
   Mindestrate **je Baustein**; Betrag eines Bausteins gleichmäßig auf seine besparten Positionen.
   Warnungen: Zielsumme ≠ 100 %, Baustein ohne besparte Position, Sparrate < n × Mindestrate.
-- Neue Nutzer (keine Bausteine): Vorlagenauswahl (Nur Konto / Konto + Anleihen-ETF /
-  Tagesgeld + Festgeld + Anleihen-ETF / Leer). Noch keine Werte: Aufteilung nach Ziel mit ℹ️-Hinweis.
+- Neue Nutzer (keine Bausteine): Vorlagenauswahl (Nur Tagesgeld / Tagesgeld + Anleihen-ETFs /
+  Tagesgeld + Festgeld + Anleihen-ETFs / Leer). Noch keine Werte: Aufteilung nach Ziel mit ℹ️-Hinweis.
 - Migrationen (vor dem ersten Zeichnen der Karten): alte flache Liste `X.safe` + Ziel „Konto %“
   → Bausteine „Konto“ und „ETF / Fonds“ (auch beim Import alter Sicherungen); Feld `art` wird
-  entfernt, ehemalige ETF-Positionen ohne Zins.
+  entfernt, ehemalige ETF-Positionen ohne Zins; Baustein-Name → Produkt (Konto/Tagesgeld → `tg`, Etf/ETF / Fonds/
+  Anleihen-ETF → `aetf`, Festgeld → `fg`, Anleihen → `anl`, sonst `sonst` mit Namen; doppelte → `sonst`);
+  bei Tagesgeld/Festgeld wird der bisherige Anbieter (`wkn`) als Bank in `name` übernommen.
 - **Zielverteilung** (`#safeZiel`, Karte vor „Bausteine & Positionen“) mit ✎/✓: Ziel % je Baustein **nur dort**
   (`buildSafeZiel()`/`renderSafeZiel()`), Summe live, Bestätigen nur bei 100 %; Hinweis bei Summe ≠ 100 % und bei
   Bausteinen mit 0 %. Baustein-Karten zeigen kein Ziel mehr. In der Vorlagenauswahl ausgeblendet.
-  **Bausteine werden dort angelegt** wie Reiter 1: Name + Ziel % + ×, „+ Baustein hinzufügen“ (`#szAdd`);
+  **Bausteine werden dort angelegt** wie Reiter 1: Produkt + Ziel % + ×, „+ Baustein hinzufügen“ (`#szAdd`);
   Karten „Bausteine & Positionen“ ohne Namensfeld/×/„+ Baustein“ – dort nur Positionen. Vorlage „Leer“ öffnet die Zielverteilung.
 - Steuer auf Zinsen fest 26,375 % (nur Info, kein Eingabefeld); Freibetrag `X.safeFrei` (leer = 0).
 
